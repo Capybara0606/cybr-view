@@ -5,7 +5,6 @@
  * Todo en memoria (state.js). Firebase llega en la FASE 3.
  */
 import { formatCode } from './time.js';
-import { commentSequence } from './data.js';
 
 const AUTHOR = 'GUEST';
 
@@ -20,7 +19,7 @@ export function createComments({ store, player, canDelete = false }) {
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
 
-  const nextId = commentSequence();
+  const nextId = () => `c_${crypto.randomUUID().slice(0, 8)}`;
   let capturedTime = null;
   let activeId = null;
   let replyTo = null;
