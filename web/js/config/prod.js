@@ -25,15 +25,15 @@ export default {
 
   review: { projectId: 'cybr_demo', version: '01' },
 
-  // ★ Credenciales WEB de Firebase (públicas). RELLENA antes de publicar.
+  // ★ Credenciales WEB de Firebase (públicas). Proyecto: cybr-view — RTDB en modo test.
   firebase: {
-    apiKey: '',
-    authDomain: '',
-    databaseURL: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
+    apiKey: 'AIzaSyAy3LyON30SpQBW9uPN28_3Lr833VHmFFU',
+    authDomain: 'cybr-view.firebaseapp.com',
+    databaseURL: 'https://cybr-view-default-rtdb.firebaseio.com',
+    projectId: 'cybr-view',
+    storageBucket: 'cybr-view.firebasestorage.app',
+    messagingSenderId: '1088646833360',
+    appId: '1:1088646833360:web:25c7f0a447564c5729aad5',
   },
 
   // URLs de video. Sustituye por tus URLs reales (Drive-proxy / CDN con Range). 
