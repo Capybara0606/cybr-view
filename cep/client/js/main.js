@@ -30,6 +30,10 @@
 
   /* --- INIT --- */
   fb.init();
+  var initErr = fb.getInitError();
+  if (initErr) {
+    authError.textContent = 'FIREBASE INIT ERROR: ' + initErr;
+  }
   fb.initConnection();
   sync.initAuth();
 

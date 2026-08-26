@@ -38,10 +38,15 @@
 
   function initAuth() {
     fb.onAuthStateChanged(function (user) {
-      state.user = user;
-      state.error = null;
-      notify();
-      if (user) loadProjects();
+      if (user) {
+        state.user = user;
+        state.error = null;
+        notify();
+        loadProjects();
+      } else {
+        state.user = null;
+        notify();
+      }
     });
   }
 
@@ -49,14 +54,19 @@
     state.loading = true;
     state.error = null;
     notify();
-    return fb.signIn(email, password).catch(function (err) {
+    return fb.signIn(email, password).then(function (cred) {
       state.loading = false;
-      state.error = 'AUTH_FAILED: ' + (err.message || err.code);
+      if (cred && cred.user) {
+        state.user = cred.user;
+        state.error = null;
+        notify();
+        loadProjects();
+      }
+    }).catch(function (err) {
+      state.loading = false;
+      state.error = 'AUTH_FAILED: ' + (err.message || err.code || String(err));
       notify();
       throw err;
-    }).then(function () {
-      state.loading = false;
-      notify();
     });
   }
 

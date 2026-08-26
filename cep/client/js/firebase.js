@@ -20,38 +20,48 @@
   var db = null;
   var auth = null;
   var connected = false;
-  var listeners = [];
+  var initError = null;
 
   /* ---------- INIT ---------- */
 
   function init() {
     if (app) return;
-    app = firebase.initializeApp(FIREBASE_CONFIG);
-    db = app.database();
-    auth = app.auth();
+    try {
+      app = firebase.initializeApp(FIREBASE_CONFIG);
+      db = app.database();
+      auth = app.auth();
+      auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 
-    db.ref('.info/connected').on('value', function (snap) {
-      connected = snap.val() === true;
-      notifyConnection(connected);
-    });
+      db.ref('.info/connected').on('value', function (snap) {
+        connected = snap.val() === true;
+        notifyConnection(connected);
+      });
+    } catch (e) {
+      initError = e.message || String(e);
+    }
   }
+
+  function getInitError() { return initError; }
 
   /* ---------- AUTH ---------- */
 
   function signIn(email, password) {
+    if (!auth) return Promise.reject(new Error('Firebase not initialized: ' + (initError || 'unknown')));
     return auth.signInWithEmailAndPassword(email, password);
   }
 
   function signOut() {
+    if (!auth) return Promise.resolve();
     return auth.signOut();
   }
 
   function onAuthStateChanged(cb) {
+    if (!auth) { cb(null); return function () {}; }
     return auth.onAuthStateChanged(cb);
   }
 
   function currentUser() {
-    return auth.currentUser;
+    return auth ? auth.currentUser : null;
   }
 
   /* ---------- CONNECTION ---------- */
@@ -64,7 +74,7 @@
 
   function onConnection(cb) {
     connListeners.push(cb);
-    if (connected !== null) cb(connected);
+    cb(connected);
     return function () {
       connListeners = connListeners.filter(function (fn) { return fn !== cb; });
     };
@@ -72,7 +82,6 @@
 
   /* ---------- DATA READS ---------- */
 
-  /** Read all projects. Returns array of { id, name, client, status }. */
   function getProjects() {
     return db.ref('cybrview/v1/projects').once('value').then(function (snap) {
       var val = snap.val();
@@ -84,7 +93,6 @@
     });
   }
 
-  /** Read versions for a project. Returns array of { id, name, number, status, fps, ... }. */
   function getVersions(projectId) {
     return db.ref('cybrview/v1/projects/' + projectId + '/versions').once('value').then(function (snap) {
       var val = snap.val();
@@ -106,7 +114,6 @@
 
   /* ---------- REALTIME COMMENTS ---------- */
 
-  /** Listen to comments for a version. Returns unsubscribe function. */
   function listenComments(projectId, versionId, cb) {
     var ref = db.ref('cybrview/v1/projects/' + projectId + '/versions/' + versionId + '/comments');
     var handler = function (snap) {
@@ -125,6 +132,7 @@
 
   window.CYBRFirebase = {
     init: init,
+    getInitError: getInitError,
     signIn: signIn,
     signOut: signOut,
     onAuthStateChanged: onAuthStateChanged,
