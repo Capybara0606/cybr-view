@@ -323,32 +323,57 @@ function cybr_pickOutputFolder() {
 
 function cybr_findPreset() {
   try {
-    var dirs = [
-      '~/AppData/Roaming/Adobe/Common/AME/10.0/Presets',
-      '~/AppData/Roaming/Adobe/Common/AME/11.0/Presets',
-      '~/AppData/Roaming/Adobe/Common/AME/12.0/Presets',
-      '~/AppData/Roaming/Adobe/Common/AME/14.0/Presets',
-      '~/AppData/Roaming/Adobe/Common/AME/15.0/Presets',
-      '~/AppData/Roaming/Adobe/Common/AME/16.0/Presets',
+    // 1) Preferir un preset CYBR del usuario (<<CYBR>> en el nombre) en las carpetas de usuario.
+    // 2) Si no, cualquier preset H.264 en carpetas de usuario o de sistema.
+    var userDirs = [
+      '~/Documents/Adobe/Adobe Media Encoder/26.0/Presets',
+      '~/Documents/Adobe/Adobe Media Encoder/25.0/Presets',
+      '~/Documents/Adobe/Adobe Media Encoder/24.0/Presets',
+      '~/Documents/Adobe/Adobe Media Encoder/23.0/Presets',
       '~/AppData/Roaming/Adobe/Common/AME/17.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/16.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/15.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/14.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/12.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/11.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/10.0/Presets',
     ];
-    var found = '';
+    var sysDirs = [
+      'C:/Program Files/Adobe/Adobe Media Encoder 2026/MediaIO/systempresets',
+      'C:/Program Files/Adobe/Adobe Media Encoder 2025/MediaIO/systempresets',
+      'C:/Program Files/Adobe/Adobe Media Encoder 2024/MediaIO/systempresets',
+      'C:/Program Files/Adobe/Adobe Media Encoder 2023/MediaIO/systempresets',
+    ];
+    var allDirs = userDirs.concat(sysDirs);
     var tried = [];
-    for (var d = 0; d < dirs.length; d++) {
-      var folder = new Folder(dirs[d]);
-      tried.push(dirs[d]);
-      if (!folder.exists) continue;
-      var files = folder.getFiles('*.epr');
-      for (var f = 0; f < files.length; f++) {
-        var n = files[f].name.toLowerCase();
-        if (n.indexOf('h264') !== -1 || n.indexOf('h.264') !== -1) {
-          found = files[f].fsName;
-          break;
+    var cybrFound = '';
+    var h264Found = '';
+
+    for (var d = 0; d < allDirs.length; d++) {
+      var root = new Folder(allDirs[d]);
+      tried.push(allDirs[d]);
+      if (!root.exists) continue;
+
+      var walk = function (folder) {
+        if (cybrFound) return;
+        var files = folder.getFiles('*.epr');
+        for (var f = 0; f < files.length; f++) {
+          var name = files[f].name.toLowerCase();
+          if (name.indexOf('cybr') !== -1) { cybrFound = files[f].fsName; return; }
+          if (!h264Found && (name.indexOf('h264') !== -1 || name.indexOf('h.264') !== -1 || name.indexOf('match source') !== -1 || name.indexOf('high quality') !== -1)) {
+            h264Found = files[f].fsName;
+          }
         }
-      }
-      if (found) break;
+        var subs = folder.getFolders();
+        for (var s = 0; s < subs.length; s++) {
+          if (cybrFound) return;
+          walk(subs[s]);
+        }
+      };
+      walk(root);
     }
-    return JSON.stringify({ preset: found, tried: tried });
+
+    return JSON.stringify({ preset: cybrFound || h264Found, tried: tried });
   } catch (e) {
     return JSON.stringify({ preset: '', error: e.message });
   }
