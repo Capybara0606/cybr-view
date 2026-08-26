@@ -222,6 +222,7 @@ Puntos clave documentados en `docs/CEP-ARCHITECTURE.md`:
 | ADR-017 | **Proxy de revisión ≤ 160 MB, servido directo desde Drive (sin servidor de video intermedio)** | Servidor/proxy de video (Node/Vercel/Worker/transcode) | Aceptada. `MAX_VIDEO_SIZE_MB = 160`; MP4/H.264/AAC/1080p; el navegador carga la URL de Drive directamente; el master queda fuera. |
 | ADR-018 | **Acceso por review token (cliente sin cuenta) + editor autenticado** | IDs simples / auth para el cliente | Aceptada. Cliente entra por `#/review/:token` (token aleatorio de 96 bits, revocable). Editor usa Firebase Authentication (email/password). La seguridad está en las reglas de RTDB (`database.rules.json` / `SECURITY.md`). |
 | ADR-020 | **Estados de revisión + approval + activity log** | Estados libres | Aceptada. Máquina de estados (`DRAFT → SENT_FOR_REVIEW → CHANGES_REQUESTED → SENT_FOR_REVIEW → APPROVED → ARCHIVED`); aprobación registra `approvedAt/approvedBy/reviewId`; los comentarios se conservan como historial; log de actividad básico. |
+| ADR-021 | **Bidirectional sync: last-write-wins + idempotent marker sync** | CRDTs / operacional transforms / cola de reconciliación | Aceptada. Firebase RTDB es la fuente de verdad. Web y CEP escriben al mismo nodo `comments/{commentId}`. La última escritura gana (`updatedAt`). No hay locks ni transacciones distributed. Los marcadores en Premiere se sincronizan de forma idempotente (match por `cybr:{commentId}`) y solo se actualizan a partir de los datos de Firebase; el CEP nunca escribe a Firebase desde un cambio de marcador, evitando loops. Ver §12. |
 
 Cada ADR con su detalle en `docs/DECISIONS.md`.
 
@@ -234,3 +235,88 @@ Cada ADR con su detalle en `docs/DECISIONS.md`.
 - **Sin servidor intermedio de video** (Node/Vercel/Cloudflare Worker/transcodificación).
 - **Seguridad por rol:** cliente y editor no tienen los mismos permisos (reglas RTDB).
 - **Estética cyber-brutalista KIRU** con los tokens definidos en `AGENTS.md`.
+
+## 12. Sincronización bidireccional Web ↔ Firebase ↔ CEP (FASE 12)
+
+### 12.1 Arquitectura de flujo
+
+```
+WEB (cliente)                          CEP PANEL (editor)
+   |                                        |
+   |--- createComment / resolve / reopen -->|
+   |                                        |
+   v                                        v
+         Firebase RTDB (fuente de verdad)
+         comments/{token}/comments/{id}
+   ^                                        ^
+   |--- realtime listener (onValue) --------|
+   |                                        |
+   v                                        v
+   re-render UI                         re-render UI + sync markers
+```
+
+**Regla fundamental:** ambos runtime (Web y CEP) escriben al **mismo nodo** de Firebase.
+Ambos escuchan los mismos cambios vía listener realtime (`onValue`).
+No existe canal directo Web↔CEP; todo pasa por Firebase.
+
+### 12.2 Estrategia de conflictos: last-write-wins
+
+Cuando dos actores escriben al mismo comentario simultáneamente:
+
+- **Cliente A resuelve** → Firebase actualiza `status: 'resolved'`
+- **Cliente B reabre** → Firebase actualiza `status: 'open'`
+- **Editor cambia estado** → Firebase actualiza `status: 'resolved'`
+
+**Resultado determinista:** la última escritura gana. Firebase RTDB aplica
+operaciones atómicas por nodo; no hay merge ni CRDT. El campo `updatedAt`
+(milisegundos desde epoch) permite determinar cronológicamente qué escritura
+ganó, pero el sistema no lo necesita para funcionar correctamente.
+
+**Escenario típico:**
+1. Cliente resuelve → `status = 'resolved'`
+2. Editor (sinver) reabre → `status = 'open'` (gana)
+3. Todos los clientes ven `open` (el último estado escrito)
+
+No se implementa un sistema de conflictos más complejo porque:
+- Los comentarios son texto libre, no datos estructurados concurrentes
+- La probabilidad de escritura exactamente simultánea es baja
+- El workflow real es secuencial (cliente comenta → editor revisa → repiten)
+
+### 12.3 Prevención de loops
+
+**Problema potencial:** CEP escribe → Firebase dispara listener → CEP re-renderiza →
+¿dispara otra escritura?
+
+**Solución:** la cadena se rompe naturalmente:
+
+1. CEP escribe status a Firebase (`updateComment`)
+2. Firebase listener dispara → estado se actualiza → UI se re-renderiza
+3. Re-render dispara `syncMarkers(comments)` → ExtendScript actualiza marcadores
+4. **ExtendScript solo escribe a Premiere** (marcadores/playhead), **nunca a Firebase**
+5. No hay paso 5 → no hay loop
+
+**Garantía:** `cybr_syncAll` en ExtendScript es una operación de solo lectura sobre
+Firebase (recibe datos, escribe marcadores en Premiere). Nunca llama a Firebase.
+
+### 12.4 Identificador único: commentId
+
+Todos los nodos usan `commentId` como clave:
+- Firebase: `reviews/{token}/comments/{commentId}`
+- Marcadores Premiere: nombre `cybr:{commentId}`
+- UI: `data-id="{commentId}"` en tarjetas de comentario
+
+Esto previene duplicados: al sincronizar marcadores, se busca por nombre `cybr:{id}`;
+si ya existe, se actualiza; si no, se crea. Si un comentario se borra de Firebase,
+el marcador correspondiente se elimina.
+
+### 12.5 Simulación de conflictos
+
+| Escenario | Web | CEP | Resultado |
+|-----------|-----|-----|-----------|
+| Cliente resuelve, editor reabre | `status=resolved` | `status=open` | `open` (gana la última escritura) |
+| Editor resuelve, cliente reabre | `status=open` | `status=resolved` | `open` (gana la última escritura) |
+| Ambos resuelven al mismo tiempo | `status=resolved` | `status=resolved` | `resolved` (idempotente, sin conflicto real) |
+| Editor crea comentario, cliente lo ve | — | `createComment` | Listener realtime lo entrega al web |
+
+**En todos los casos:** el estado final en Firebase es consistente en todos los clientes.
+No hay estados parciales ni datos fantasma.

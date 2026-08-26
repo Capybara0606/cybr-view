@@ -79,6 +79,19 @@
     });
   }
 
+  /* --- RESOLVE / REOPEN (writes to Firebase, listener re-renders) --- */
+  function onResolve(commentId, currentStatus) {
+    var action = currentStatus === 'resolved' ? 'reopen' : 'resolve';
+    var promise = currentStatus === 'resolved'
+      ? sync.reopenComment(commentId)
+      : sync.resolveComment(commentId);
+    promise.then(function () {
+      _b(action + ' OK: ' + commentId);
+    }).catch(function (err) {
+      _b(action + ' ERR: ' + (err.message || err));
+    });
+  }
+
   /* --- MARKER SYNC --- */
   var lastSyncedVersion = null;
   var syncDebounce = null;
@@ -127,9 +140,23 @@
         body.className = 'comment-body';
         body.textContent = c.body || '';
 
+        var actions = document.createElement('div');
+        actions.className = 'comment-actions';
+        var btnResolve = document.createElement('button');
+        btnResolve.className = 'btn btn-sm comment-btn-resolve';
+        btnResolve.textContent = c.status === 'resolved' ? 'REOPEN' : 'RESOLVE';
+        btnResolve.setAttribute('data-comment-id', c.id);
+        btnResolve.setAttribute('data-status', c.status || 'open');
+        btnResolve.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          onResolve(c.id, c.status || 'open');
+        });
+        actions.appendChild(btnResolve);
+
         card.appendChild(tc);
         card.appendChild(meta);
         if (c.body) card.appendChild(body);
+        card.appendChild(actions);
 
         card.addEventListener('click', function () {
           onCommentClick(c.time || 0);

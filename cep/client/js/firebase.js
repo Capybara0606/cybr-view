@@ -171,6 +171,13 @@
     return function () { ref.off('value', handler); };
   }
 
+  /* ---------- WRITE (bidirectional sync) ---------- */
+
+  function updateComment(token, commentId, patch) {
+    if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
+    return db.ref('cybrview/v1/reviews/' + token + '/comments/' + commentId).update(patch);
+  }
+
   /* ---------- PUBLIC API ---------- */
 
   window.CYBRFirebase = {
@@ -185,5 +192,6 @@
     getVersions: getVersions,
     findToken: findToken,
     listenComments: listenComments,
+    updateComment: updateComment,
   };
 })();

@@ -258,6 +258,20 @@ body {
 }
 .comment-body:empty { display: none; }
 
+.comment-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.comment-btn-resolve {
+  border-color: var(--green);
+  color: var(--green);
+}
+.comment-btn-resolve:hover {
+  background: var(--green);
+  color: #000;
+}
+
 /* --- status colors --- */
 .status-ok { color: var(--green); }
 .status-err { color: var(--danger); }

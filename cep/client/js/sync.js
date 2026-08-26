@@ -179,6 +179,18 @@
     });
   }
 
+  /* ---------- BIDIRECTIONAL SYNC ---------- */
+
+  function resolveComment(commentId) {
+    if (!state.selectedToken || !commentId) return Promise.reject(new Error('NO_TOKEN'));
+    return fb.updateComment(state.selectedToken, commentId, { status: 'resolved', updatedAt: Date.now() });
+  }
+
+  function reopenComment(commentId) {
+    if (!state.selectedToken || !commentId) return Promise.reject(new Error('NO_TOKEN'));
+    return fb.updateComment(state.selectedToken, commentId, { status: 'open', updatedAt: Date.now() });
+  }
+
   /* ---------- PUBLIC API ---------- */
 
   window.CYBRSync = {
@@ -191,5 +203,7 @@
     selectProject: selectProject,
     selectVersion: selectVersion,
     loadProjects: loadProjects,
+    resolveComment: resolveComment,
+    reopenComment: reopenComment,
   };
 })();

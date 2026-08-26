@@ -7,6 +7,30 @@
 
 ---
 
+## [0.10.0] — 2026-08-26
+
+### Added
+- **FASE 12 — Sincronización bidireccional Web ↔ Firebase ↔ CEP.**
+- `cep/client/js/firebase.js`: `updateComment(token, commentId, patch)` — escritura de
+  status de comentario a Firebase RTDB desde el CEP panel.
+- `cep/client/js/sync.js`: `resolveComment(commentId)` y `reopenComment(commentId)` —
+  resuelven/reabren comentarios desde Premiere vía Firebase.
+- `cep/client/js/main.js`: botones RESOLVE/REOPEN en cada tarjeta de comentario del CEP.
+  Click → escribe a Firebase → listener realtime re-renderiza UI + sincroniza marcadores.
+- `cep/client/js/bridge.js`: `syncAll()` ahora envía campo `status` en el JSON para marcadores.
+- `cep/host/ExtendScript/main.jsx`: `cybr_syncAll()` incluye prefijo `[RESOLVED]` / `[OPEN]`
+  en el texto del marcador según el estado del comentario.
+- `ARCHITECTURE.md`: §12 Sincronización bidireccional (flujo, anti-loops, prevención de
+  duplicados, ADR-021 last-write-wins, simulación de conflictos).
+
+### Changed
+- Marcadores en Premiere ahora muestran estado del comentario (`[RESOLVED] body` / `body`).
+
+### Fixed
+- `cep/client/css/panel.css`: estilos para botones de acción en tarjetas de comentario.
+
+---
+
 ## [0.9.0] — 2026-08-26
 
 ### Fixed

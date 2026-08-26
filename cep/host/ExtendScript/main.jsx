@@ -211,16 +211,18 @@ function cybr_syncAll(markersJson) {
       var c = incoming[i];
       incomingIds[c.id] = true;
       var safe = frameRound(c.time || 0, fps);
+      var statusPrefix = (c.status === 'resolved') ? '[RESOLVED] ' : '';
+      var markerText = statusPrefix + (c.body || '');
       try {
         var existing = findMarkerById(markers, c.id);
         if (existing) {
           existing.startTime = makeTime(safe);
-          existing.comments = c.body || '';
+          existing.comments = markerText;
           updated++;
         } else {
           var m = markers.createMarker(safe);
           m.name = 'cybr:' + c.id;
-          m.comments = c.body || '';
+          m.comments = markerText;
           created++;
         }
       } catch (err) {

@@ -78,7 +78,7 @@
 
   function syncAll(comments, cb) {
     var json = JSON.stringify(comments.map(function (c) {
-      return { id: c.id, time: c.time || 0, body: c.body || '' };
+      return { id: c.id, time: c.time || 0, body: c.body || '', status: c.status || 'open' };
     }));
     var safe = json.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     var call = "cybr_syncAll('" + safe + "')";
