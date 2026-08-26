@@ -3,55 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' file:; connect-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+        content="default-src 'self' file:;
+                 connect-src https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com;
+                 img-src 'self' data:;
+                 style-src 'self' 'unsafe-inline';
+                 script-src 'self' 'unsafe-inline'">
   <title>CYBR VIEW</title>
   <link rel="stylesheet" href="css/panel.css">
 </head>
 <body>
 
   <header class="header">
-    <div class="header-brand">CYBR_ VIEW <span class="header-tag">// SYSTEM</span></div>
+    <div class="header-row">
+      <span class="header-brand">CYBR_ VIEW <span class="header-tag">// SYSTEM</span></span>
+      <span class="conn-dot" id="conn-dot" title="Connection status"></span>
+    </div>
   </header>
 
-  <main class="panel">
+  <!-- AUTH -->
+  <section class="auth-panel" id="auth-panel">
+    <div class="module-label">/00 AUTH</div>
+    <form id="auth-form" class="auth-form">
+      <input type="email" id="auth-email" placeholder="EMAIL" autocomplete="email" required>
+      <input type="password" id="auth-pass" placeholder="PASSWORD" autocomplete="current-password" required>
+      <div class="auth-error" id="auth-error"></div>
+      <button type="submit" class="btn btn-full">CONNECT</button>
+    </form>
+  </section>
 
-    <section class="module" id="mod-project">
+  <!-- MAIN PANEL (hidden until auth) -->
+  <main class="panel" id="main-panel" style="display:none;">
+
+    <section class="module">
       <div class="module-label">/01 PROJECT</div>
-      <div class="module-value" id="val-project">—</div>
-      <button class="btn" id="btn-project">GET PROJECT</button>
+      <select class="sel" id="sel-project"><option value="">— SELECT PROJECT —</option></select>
     </section>
 
-    <section class="module" id="mod-comments">
-      <div class="module-label">/02 COMMENTS</div>
-      <div class="module-value muted">PROXIMAMENTE</div>
+    <section class="module">
+      <div class="module-label">/02 VERSION</div>
+      <select class="sel" id="sel-version" disabled><option value="">— SELECT VERSION —</option></select>
     </section>
 
-    <section class="module" id="mod-timeline">
-      <div class="module-label">/03 TIMELINE</div>
-      <div class="row">
-        <span class="key">SEQUENCE //</span>
-        <span class="module-value" id="val-sequence">—</span>
-      </div>
-      <div class="row">
-        <span class="key">TIME //</span>
-        <span class="module-value mono" id="val-time">00:00:00:00</span>
-      </div>
-      <div class="btn-row">
-        <button class="btn" id="btn-sequence">GET SEQUENCE</button>
-        <button class="btn" id="btn-time">GET TIME</button>
+    <section class="module">
+      <div class="module-label">/03 COMMENTS <span class="count" id="comments-count">00</span></section>
+      <div class="comment-list" id="comment-list">
+        <div class="empty-state" id="empty-state">NO COMMENTS</div>
       </div>
     </section>
 
-    <section class="module" id="mod-system">
+    <section class="module">
       <div class="module-label">/04 SYSTEM</div>
-      <div class="row">
-        <span class="key">STATUS //</span>
-        <span class="module-value" id="val-status">STANDBY</span>
+      <div class="row"><span class="key">STATUS //</span><span class="val" id="sys-status">—</span></div>
+      <div class="row"><span class="key">USER //</span><span class="val" id="sys-user">—</span></div>
+      <div class="row"><span class="key">PROJECT //</span><span class="val" id="sys-project">—</span></div>
+      <div class="row"><span class="key">VERSION //</span><span class="val" id="sys-version">—</span></div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-sm" id="btn-logout">DISCONNECT</button>
       </div>
     </section>
 
   </main>
 
+  <script src="js/vendor/firebase-app-compat.js"></script>
+  <script src="js/vendor/firebase-database-compat.js"></script>
+  <script src="js/vendor/firebase-auth-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/CSInterface.js"></script>
   <script src="js/main.js"></script>
 </body>

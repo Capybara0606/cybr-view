@@ -27,7 +27,7 @@ function cybr_getActiveSequence() {
       nodeId: seq.nodeId || '',
       name: seq.name || '(sin nombre)',
       fps: Number(seq.timebase) || 25,
-      duration: seq.end ? Number(seq.end) : 0,
+      duration: (seq.end && seq.end.seconds !== undefined) ? Number(seq.end.seconds) : 0,
     });
   } catch (e) {
     return JSON.stringify({ error: 'Error al leer secuencia: ' + e.message });
@@ -41,7 +41,7 @@ function cybr_getCurrentTime() {
     var seq = p.activeSequence;
     if (!seq) return JSON.stringify({ error: 'No hay secuencia activa' });
     var pos = seq.getPlayerPosition();
-    var seconds = pos ? Number(pos) : 0;
+    var seconds = (pos && pos.seconds !== undefined) ? Number(pos.seconds) : 0;
     var fps = Number(seq.timebase) || 25;
     return JSON.stringify({
       seconds: seconds,
