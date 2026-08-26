@@ -41,6 +41,7 @@ export default {
     headers.set('access-control-allow-origin', '*');
     headers.set('accept-ranges', 'bytes');
     headers.set('content-type', 'video/mp4');
+    headers.set('content-disposition', 'inline');
     if (drive.status === 200 || drive.status === 206) {
       return new Response(body, { status: drive.status, headers });
     }

@@ -5,13 +5,14 @@
  *   - en localStorage si no (modo local/DEV).
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
-import { defaultData, load, save } from './data.js';
+import { defaultData, load, save, refreshVideoUrls } from './data.js';
 import { configured, listenComments, createComment, updateComment, deleteComment } from './firebase.js';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
 
 export function createSession() {
   let tree = load() || defaultData();
+  refreshVideoUrls(tree);
   let projectId = tree[0]?.id || null;
   let versionId = tree[0]?.versions[0]?.id || null;
   const useRemote = configured;

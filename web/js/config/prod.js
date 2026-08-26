@@ -38,7 +38,7 @@ export default {
 
   // URLs de video. Sustituye por tus URLs reales (Drive con confirm=t -> Range/CORS OK).
   demo: {
-    videoV01: 'https://drive.usercontent.google.com/download?id=1nf69dLKCQyTWAJvABIG7HJiOe3JRnAwP&export=download&confirm=t',
+    videoV01: 'https://drive.google.com/uc?export=download&id=1zUEtgcPj6BI0TP6vCMMnn1Tid9d3PC_p',
     videoV02: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     videoV03: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     videoShorts: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',

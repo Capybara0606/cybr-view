@@ -84,6 +84,23 @@ export function load() {
   }
 }
 
+/** Reaplica las URLs de video (y fps) desde la config actual, ignorando la cache de localStorage. */
+export function refreshVideoUrls(tree) {
+  const def = defaultData();
+  tree.forEach((p) => {
+    const dp = def.find((d) => d.id === p.id);
+    if (!dp) return;
+    p.versions.forEach((v) => {
+      const dv = dp.versions.find((d) => d.id === v.id);
+      if (dv) {
+        v.videoUrl = dv.videoUrl;
+        v.fps = dv.fps;
+      }
+    });
+  });
+  return tree;
+}
+
 export function save(data) {
   try {
     localStorage.setItem(KEY, JSON.stringify(data));
