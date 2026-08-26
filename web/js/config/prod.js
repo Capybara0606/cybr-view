@@ -36,9 +36,9 @@ export default {
     appId: '1:1088646833360:web:25c7f0a447564c5729aad5',
   },
 
-  // URLs de video. Sustituye por tus URLs reales (Drive con confirm=t -> Range/CORS OK).
+  // URLs de video. V01 sirve via Cloudflare Worker (proxy Drive -> inline + Range + CORS).
   demo: {
-    videoV01: 'https://drive.google.com/uc?export=download&id=1zUEtgcPj6BI0TP6vCMMnn1Tid9d3PC_p',
+    videoV01: 'https://cybr-view-proxy.j-anibal640-0.workers.dev/1zUEtgcPj6BI0TP6vCMMnn1Tid9d3PC_p',
     videoV02: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     videoV03: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     videoShorts: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
