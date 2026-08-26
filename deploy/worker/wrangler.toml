@@ -1,3 +1,10 @@
 name = "cybr-view-proxy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+# Binding al bucket R2 donde se guardan los proxies de revisión.
+# Crea un bucket llamado "cybr-view-proxies" en Cloudflare (R2 Object Storage) y
+# cambia el nombre aquí si usas otro.
+[[r2_buckets]]
+binding = "PROXIES_BUCKET"
+bucket_name = "cybr-view-proxies"
