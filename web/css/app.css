@@ -72,6 +72,16 @@ button {
   font-weight: 700;
   letter-spacing: 0.08em;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  height: 26px;
+  width: auto;
+  display: block;
+  filter: none;
 }
 
 .brand-mark {
@@ -651,6 +661,15 @@ button {
 
 .foot-brand {
   color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.foot-logo {
+  height: 16px;
+  width: auto;
+  display: block;
 }
 
 .foot-ver {
