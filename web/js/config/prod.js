@@ -1,0 +1,46 @@
+/**
+ * CYBR VIEW — entorno de PRODUCCIÓN (GitHub Pages).
+ *
+ * ⚠️ COMPLETA ESTO con TU proyecto de Firebase (credenciales WEB, son públicas).
+ * La seguridad real la dan las REGLAS de Realtime Database (ver docs/FIREBASE-RULES.md).
+ * NUNCA pongas aquí service accounts, private keys ni credenciales de servidor.
+ *
+ * Para que la app use Firebase: rellena firebase.* (al menos apiKey, databaseURL, projectId)
+ * y activa RTDB con reglas de desarrollo. Sin esto, la app corre en modo LOCAL/DEV.
+ *
+ * Videos: apunta cada versión a TU fuente (para los renders grandes usa el proxy de
+ * Cloudflare Worker descrito en DEPLOYMENT.md -> deploy/worker/worker.js).
+ */
+export default {
+  identity: {
+    product: 'CYBR VIEW',
+    company: 'KIRU',
+    tagline: 'VIDEO REVIEW // SYSTEM',
+    version: '0.6.0',
+  },
+
+  meta: { project: 'MULTIMONEY', version: 'V01', status: 'WAITING FOR REVIEW', fps: 25 },
+
+  video: { url: '', poster: '', fps: 25, timecodeType: 'NDF' },
+
+  review: { projectId: 'cybr_demo', version: '01' },
+
+  // ★ Credenciales WEB de Firebase (públicas). RELLENA antes de publicar.
+  firebase: {
+    apiKey: '',
+    authDomain: '',
+    databaseURL: '',
+    projectId: '',
+    storageBucket: '',
+    messagingSenderId: '',
+    appId: '',
+  },
+
+  // URLs de video. Sustituye por tus URLs reales (Drive-proxy / CDN con Range). 
+  demo: {
+    videoV01: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    videoV02: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    videoV03: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    videoShorts: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  },
+};

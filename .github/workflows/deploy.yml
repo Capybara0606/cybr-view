@@ -1,0 +1,42 @@
+name: Deploy CYBR VIEW to GitHub Pages
+
+# Publica la carpeta `web/` (frontend estático) en GitHub Pages.
+# Se activa al subir a la rama `main` o manualmente (workflow_dispatch).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # El estatico vive en web/ (suponiendo que cybr-view/ es la raiz del repo).
+          # Si el repo contiene cybr-view/ como subcarpeta, usa 'cybr-view/web'.
+          path: web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,37 @@
+/*
+ * CYBR VIEW — design tokens (FASE 0, solo identidad visual).
+ * Fuente normativa de la estética CYBER BRUTALIST / TECHNICAL EDITORIAL.
+ * No hay lógica de producto aquí.
+ */
+
+:root {
+  /* fondo */
+  --bg: #050505;
+  --surface: #0A0A0A;
+  --border: #262626;
+
+  /* color KIRU */
+  --green: #1DB954;
+
+  /* texto */
+  --text: #F2F2F2;
+  --muted: #8A8A8A;
+
+  /* peligro / resolución */
+  --danger: #FF3B30;
+
+  /* tipografía */
+  --font-ui: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", "Roboto Mono", monospace;
+
+  /* métrica */
+  --border-w: 1px;
+  --radius: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+}

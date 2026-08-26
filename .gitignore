@@ -1,0 +1,22 @@
+# Firebase config con posibles datos sensibles (si los añades manualmente)
+# La config resuelta (web/js/config.js) y los entornos (web/js/config/*.js)
+# son credenciales WEB públicas y se versionan. NUNCA subir service accounts.
+
+# Media local (videos pesados) — NO se suben al repo / GitHub Pages
+web/media/
+
+# Dev server / artefactos
+server.*.log
+*.log
+node_modules/
+dist/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.swp
+
+# Netlify / env
+.netlify/
+.env
+.env.*

@@ -1,0 +1,93 @@
+/**
+ * CYBR VIEW — datos de catálogo (FASE 5.5).
+ * PROYECTOS / VERSIONES (con su videoUrl) y comentarios locales (fallback).
+ * En producción, los comentarios viven en Firebase RTDB; aquí queda el catálogo
+ * y el fallback local. Los videos NO se guardan en el repo ni en Firebase:
+ * videoUrl apunta a una fuente externa (configurada en config/).
+ */
+import { formatCode } from './time.js';
+import { CONFIG } from './config.js';
+
+const KEY = 'cybrview:projects:v2';
+const now = () => Date.now();
+
+export function commentSequence() {
+  let n = 100;
+  return () => `comment_${String(++n).padStart(3, '0')}`;
+}
+
+function mkComment(id, time, body) {
+  const t = now();
+  return {
+    id,
+    authorName: 'GUEST',
+    authorRole: 'guest',
+    body,
+    time,
+    timeCode: formatCode(time),
+    status: 'open',
+    createdAt: t,
+    updatedAt: t,
+  };
+}
+
+function mkVersion(id, videoUrl, status, comments) {
+  const t = now();
+  return { id, name: id, videoUrl, fps: 25, status, createdAt: t, updatedAt: t, comments };
+}
+
+function seedDefault() {
+  const v = CONFIG.demo;
+  return [
+    {
+      id: 'proj_multimoney',
+      name: 'MULTIMONEY',
+      createdAt: now(),
+      updatedAt: now(),
+      versions: [
+        mkVersion('V01', v.videoV01, 'WAITING FOR REVIEW', [
+          mkComment('c1', 5, 'Revisar el fundido de entrada.'),
+          mkComment('c2', 12, 'El título aparece muy pronto.'),
+          mkComment('c3', 34.27, 'El corte está demasiado rápido.'),
+        ]),
+        mkVersion('V02', v.videoV02, 'IN REVIEW', [
+          mkComment('c4', 3, 'Probar aquí el nuevo audio.'),
+          mkComment('c5', 8, 'El gráfico de entrada se ve mejor.'),
+        ]),
+        mkVersion('V03', v.videoV03, 'APPROVED', []),
+      ],
+    },
+    {
+      id: 'proj_shorts',
+      name: 'SHORTS',
+      createdAt: now(),
+      updatedAt: now(),
+      versions: [
+        mkVersion('V01', v.videoShorts, 'WAITING FOR REVIEW', [
+          mkComment('c6', 10, 'Ajustar el ritmo aquí.'),
+        ]),
+      ],
+    },
+  ];
+}
+
+export function defaultData() {
+  return seedDefault();
+}
+
+export function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function save(data) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(data));
+  } catch {
+    /* sin almacenamiento (quota / privado) */
+  }
+}
