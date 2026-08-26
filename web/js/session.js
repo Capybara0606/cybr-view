@@ -6,7 +6,7 @@
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
 import { defaultData, load, save, refreshVideoUrls, findByToken } from './data.js';
-import { configured, listenComments, createComment, updateComment, deleteComment, onConnection, setReviewToken } from './firebase.js';
+import { configured, listenComments, createComment, updateComment, deleteComment, onConnection, setReviewToken, getReviewToken, setReviewApproval } from './firebase.js';
 import { canTransition } from './status.js';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
@@ -22,10 +22,13 @@ export function createSession() {
   const selectSubs = new Set();
   let mirror = [];
   let unsub = null;
+  let remoteProject = null; // revisión resuelta desde Firebase (cliente cross-device)
+  let remoteVersion = null;
 
-  const currentProject = () => tree.find((p) => p.id === projectId) || null;
+  const currentProject = () => remoteProject || tree.find((p) => p.id === projectId) || null;
   const currentVersion = () => {
-    const p = currentProject();
+    if (remoteVersion) return remoteVersion;
+    const p = tree.find((x) => x.id === projectId);
     return p?.versions.find((v) => v.id === versionId) || p?.versions[0] || null;
   };
   const localComments = () => currentVersion()?.comments || [];
@@ -79,6 +82,8 @@ export function createSession() {
   const optimisticRemove = (id) => applyMirror(mirror.filter((c) => c.id !== id));
 
   async function selectProject(id) {
+    remoteProject = null;
+    remoteVersion = null;
     projectId = id;
     const p = currentProject();
     versionId = p?.versions[0]?.id || null;
@@ -87,6 +92,8 @@ export function createSession() {
   }
   async function selectVersion(id) {
     if (id && id !== versionId) {
+      remoteProject = null;
+      remoteVersion = null;
       versionId = id;
       notifySelect();
       await attach();
@@ -97,12 +104,24 @@ export function createSession() {
     return currentVersion()?.accessToken;
   }
 
+  function tokenMeta(p, v) {
+    return {
+      projectId: p.id,
+      versionId: v.id,
+      status: v.accessStatus, // acceso (para las reglas)
+      projectName: p.name,
+      versionName: v.name,
+      videoUrl: v.videoUrl,
+      fps: v.fps,
+      reviewStatus: v.status,
+    };
+  }
+
   function syncAllTokens() {
     if (!useRemote) return;
     tree.forEach((p) => {
       (p.versions || []).forEach((v) => {
-        setReviewToken(v.accessToken, { projectId: p.id, versionId: v.id, status: v.accessStatus })
-          .catch(() => {});
+        setReviewToken(v.accessToken, tokenMeta(p, v)).catch(() => {});
       });
     });
   }
@@ -118,7 +137,7 @@ export function createSession() {
     found.version.updatedAt = Date.now();
     persistLocal();
     if (useRemote) {
-      setReviewToken(token, { projectId: found.project.id, versionId: found.version.id, status }).catch(() => {});
+      setReviewToken(token, tokenMeta(found.project, found.version)).catch(() => {});
     }
     return true;
   }
@@ -158,11 +177,43 @@ export function createSession() {
   }
 
   function approveActive(author) {
+    if (useRemote && remoteVersion) {
+      const now = Date.now();
+      remoteVersion.status = 'APPROVED';
+      remoteVersion.approvedAt = now;
+      remoteVersion.approvedBy = author;
+      remoteVersion.reviewId = remoteVersion.accessToken;
+      setReviewApproval(remoteVersion.accessToken, { approvedAt: now, approvedBy: author, reviewId: remoteVersion.accessToken }).catch(() => {});
+      notifySelect();
+      return { ok: true, version: remoteVersion };
+    }
     const v = currentVersion();
     return setReviewStatus(v?.id, 'APPROVED', author);
   }
 
   async function openReview(token) {
+    if (useRemote) {
+      const node = await getReviewToken(token).catch(() => null);
+      if (!node) return { ok: false, reason: 'invalid' };
+      if (node.status !== 'active') return { ok: false, reason: 'revoked' };
+      remoteProject = { id: node.projectId, name: node.projectName };
+      remoteVersion = {
+        id: node.versionId,
+        name: node.versionName,
+        videoUrl: node.videoUrl,
+        fps: node.fps,
+        status: node.reviewStatus || 'SENT_FOR_REVIEW',
+        accessToken: token,
+        approvedAt: node.approvedAt || null,
+        approvedBy: node.approvedBy || null,
+      };
+      projectId = node.projectId;
+      versionId = node.versionId;
+      notifySelect();
+      await attach();
+      return { ok: true, project: remoteProject, version: remoteVersion };
+    }
+
     const found = findByToken(tree, token);
     if (!found) return { ok: false, reason: 'invalid' };
     if (found.version.accessStatus !== 'active') {

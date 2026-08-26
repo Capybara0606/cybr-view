@@ -69,6 +69,19 @@ export async function setReviewToken(token, data) {
   await d.ref(tokenPath(token)).set(data);
 }
 
+/** Lee el mapeo del token (cliente): { projectId, versionId, status, ...meta }. */
+export async function getReviewToken(token) {
+  const d = await db();
+  const snap = await d.ref(tokenPath(token)).once('value');
+  return snap.val();
+}
+
+/** El cliente (sin auth, con token activo) registra la aprobación. */
+export async function setReviewApproval(token, data) {
+  const d = await db();
+  await d.ref(`cybrview/v1/reviews/${token}/approval`).set(data);
+}
+
 /** Estado de conexión del backend (para la UI). */
 export function onConnection(cb) {
   if (!configured) {
