@@ -1,7 +1,7 @@
 /**
- * CYBR VIEW — sync module for CEP panel (FASE 10).
+ * CYBR VIEW — sync module for CEP panel (FASE 11).
  * Manages realtime subscriptions and state for the panel.
- * Pure data layer — no DOM.
+ * Reads projects/versions from tokens, comments from reviews/{token}.
  */
 (function () {
   'use strict';
@@ -15,6 +15,7 @@
     comments: [],
     selectedProjectId: null,
     selectedVersionId: null,
+    selectedToken: null,
     connected: false,
     loading: false,
     error: null,
@@ -77,6 +78,7 @@
     state.comments = [];
     state.selectedProjectId = null;
     state.selectedVersionId = null;
+    state.selectedToken = null;
     notify();
     return fb.signOut();
   }
@@ -103,6 +105,7 @@
   function selectProject(projectId) {
     state.selectedProjectId = projectId;
     state.selectedVersionId = null;
+    state.selectedToken = null;
     state.versions = [];
     state.comments = [];
     state.loading = true;
@@ -127,22 +130,37 @@
     state.error = null;
     detachComments();
     notify();
-    attachComments();
+
+    var ver = state.versions.find(function (v) { return v.id === versionId; });
+    if (ver && ver.token) {
+      state.selectedToken = ver.token;
+      attachComments(ver.token);
+    } else {
+      fb.findToken(state.selectedProjectId, versionId).then(function (token) {
+        state.selectedToken = token;
+        if (token) {
+          attachComments(token);
+        } else {
+          state.loading = false;
+          state.error = 'NO_TOKEN_FOUND';
+          notify();
+        }
+      }).catch(function (err) {
+        state.loading = false;
+        state.error = 'TOKEN查找失败: ' + (err.message || err.code);
+        notify();
+      });
+    }
   }
 
   /* ---------- COMMENTS (REALTIME) ---------- */
 
-  function attachComments() {
-    if (!state.selectedProjectId || !state.selectedVersionId) return;
-    commentsUnsub = fb.listenComments(
-      state.selectedProjectId,
-      state.selectedVersionId,
-      function (comments) {
-        state.comments = comments;
-        state.loading = false;
-        notify();
-      }
-    );
+  function attachComments(token) {
+    commentsUnsub = fb.listenComments(token, function (comments) {
+      state.comments = comments;
+      state.loading = false;
+      notify();
+    });
   }
 
   function detachComments() {

@@ -1,7 +1,8 @@
 /**
- * CYBR VIEW — Firebase layer for CEP panel (FASE 10).
+ * CYBR VIEW — Firebase layer for CEP panel (FASE 11).
  * Uses Firebase compat SDK (gstatic builds in vendor/).
- * Handles: init, auth, read projects/versions, realtime comments.
+ * Reads projects/versions from tokens path (web writes tokens, not projects).
+ * Comments live at cybrview/v1/reviews/{token}/comments.
  */
 (function () {
   'use strict';
@@ -79,42 +80,85 @@
     };
   }
 
-  /* ---------- DATA READS ---------- */
+  /* ---------- DATA READS (from tokens) ---------- */
 
+  /**
+   * Read all tokens, derive unique projects.
+   * Each token has: { projectId, projectName, versionId, versionName, status, fps, videoUrl, reviewStatus }
+   */
   function getProjects() {
-    return db.ref('cybrview/v1/projects').once('value').then(function (snap) {
+    return db.ref('cybrview/v1/tokens').once('value').then(function (snap) {
       var val = snap.val();
       if (!val) return [];
-      return Object.keys(val).map(function (k) {
-        var meta = val[k].meta || {};
-        return { id: k, name: meta.name || k, client: meta.client || '', status: meta.status || 'active' };
+      var seen = {};
+      var projects = [];
+      Object.keys(val).forEach(function (token) {
+        var t = val[token];
+        if (!t || !t.projectId) return;
+        if (seen[t.projectId]) return;
+        seen[t.projectId] = true;
+        projects.push({
+          id: t.projectId,
+          name: t.projectName || t.projectId,
+          client: '',
+          status: 'active',
+        });
       });
+      return projects;
     });
   }
 
+  /**
+   * Read all tokens for a projectId, return unique versions.
+   */
   function getVersions(projectId) {
-    return db.ref('cybrview/v1/projects/' + projectId + '/versions').once('value').then(function (snap) {
+    return db.ref('cybrview/v1/tokens').once('value').then(function (snap) {
       var val = snap.val();
       if (!val) return [];
-      return Object.keys(val).map(function (k) {
-        var meta = val[k].meta || {};
-        return {
-          id: k,
-          name: meta.title || meta.name || k,
-          number: meta.number || 0,
-          orderCode: meta.orderCode || '',
-          status: meta.status || 'draft',
-          fps: meta.fps || 25,
-          videoUrl: meta.videoUrl || '',
-        };
+      var seen = {};
+      var versions = [];
+      Object.keys(val).forEach(function (token) {
+        var t = val[token];
+        if (!t || t.projectId !== projectId) return;
+        if (seen[t.versionId]) return;
+        seen[t.versionId] = true;
+        versions.push({
+          id: t.versionId,
+          name: t.versionName || t.versionId,
+          number: 0,
+          orderCode: '',
+          status: t.reviewStatus || 'draft',
+          fps: t.fps || 25,
+          videoUrl: t.videoUrl || '',
+          token: token,
+        });
       });
+      return versions;
     });
   }
 
-  /* ---------- REALTIME COMMENTS ---------- */
+  /**
+   * Find the token for a specific project+version combination.
+   */
+  function findToken(projectId, versionId) {
+    return db.ref('cybrview/v1/tokens').once('value').then(function (snap) {
+      var val = snap.val();
+      if (!val) return null;
+      var best = null;
+      Object.keys(val).forEach(function (token) {
+        var t = val[token];
+        if (t && t.projectId === projectId && t.versionId === versionId) {
+          best = token;
+        }
+      });
+      return best;
+    });
+  }
 
-  function listenComments(projectId, versionId, cb) {
-    var ref = db.ref('cybrview/v1/projects/' + projectId + '/versions/' + versionId + '/comments');
+  /* ---------- REALTIME COMMENTS (via reviews/{token}) ---------- */
+
+  function listenComments(token, cb) {
+    var ref = db.ref('cybrview/v1/reviews/' + token + '/comments');
     var handler = function (snap) {
       var val = snap.val();
       var list = val ? Object.keys(val).map(function (k) {
@@ -139,6 +183,7 @@
     onConnection: onConnection,
     getProjects: getProjects,
     getVersions: getVersions,
+    findToken: findToken,
     listenComments: listenComments,
   };
 })();
