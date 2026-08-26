@@ -70,8 +70,17 @@ export function createSession() {
     const v = currentVersion();
     if (!v) { applyMirror([]); return; }
     if (useRemote) {
-      try { unsub = await listenComments(v.accessToken, (val) => applyMirror(toComments(val))); }
-      catch { applyMirror(localComments()); }
+      if (!v.accessToken) { applyMirror([]); return; }
+      try {
+        unsub = await listenComments(v.accessToken, (val) => {
+          const list = toComments(val);
+          applyMirror(list);
+          const tp = tree.find((x) => x.id === (v.id && (remoteProject ? remoteProject.id : projectId)));
+          const tv = tp?.versions.find((x) => x.id === v.id);
+          if (tv) { tv.comments = list; }
+          notifySelect();
+        });
+      } catch { applyMirror(localComments()); }
     } else {
       applyMirror(localComments());
     }
@@ -101,7 +110,7 @@ export function createSession() {
       if (tree.length && !seeded) {
         seeded = true;
       }
-      if (projectId && !tree.find((p) => p.id === projectId)) {
+      if (!projectId || !tree.find((p) => p.id === projectId)) {
         projectId = tree[0]?.id || null;
         versionId = tree[0]?.versions[0]?.id || null;
       }
@@ -190,6 +199,9 @@ export function createSession() {
     if (useRemote) {
       const id = await fbCreateProject(data);
       projectId = id;
+      if (!tree.find((p) => p.id === id)) {
+        tree.push({ id, name, client: client || '', createdAt: now, updatedAt: now, versions: [] });
+      }
       notifyProjects();
       notifySelect();
       return id;
@@ -219,8 +231,14 @@ export function createSession() {
         projectName: (tree.find((p) => p.id === projectIdRef) || {}).name || '',
         versionName: name, videoUrl: videoUrl || '', fps: fps || 25, reviewStatus: 'DRAFT',
       }).catch(() => {});
+      const p = tree.find((x) => x.id === projectIdRef);
+      if (p && !p.versions.find((x) => x.id === id)) {
+        p.versions.push({ ...data, id, comments: [] });
+      }
       projectId = projectIdRef;
       versionId = id;
+      remoteProject = null;
+      remoteVersion = null;
       notifyProjects();
       notifySelect();
       await attach();
@@ -346,7 +364,7 @@ export function createSession() {
   /* ---------- boot ---------- */
 
   if (useRemote) {
-    ensureSeed().then(() => startProjectListener());
+    startProjectListener();
   }
   attach();
 
@@ -366,6 +384,7 @@ export function createSession() {
     approveActive,
     syncAllTokens,
     onConnection,
+    ensureSeed,
     addProject,
     addVersion,
     editProject,

@@ -147,20 +147,30 @@ export async function deleteVersion(projectId, versionId) {
 
 export async function seedIfEmpty(projects) {
   const d = await db();
-  const snap = await d.ref(PROJECTS_BASE).once('value');
-  if (snap.val()) return false;
-  const updates = {};
+  const projectSnap = await d.ref(PROJECTS_BASE).once('value');
+  if (projectSnap.val()) return false;
+  const tree = {};
+  const commentWrites = {};
   projects.forEach((p) => {
-    updates[p.id] = { name: p.name, client: p.client || '', createdAt: p.createdAt, updatedAt: p.updatedAt };
+    tree[p.id] = {
+      name: p.name, client: p.client || '', createdAt: p.createdAt, updatedAt: p.updatedAt,
+      versions: {},
+    };
     (p.versions || []).forEach((v) => {
-      updates[`${p.id}/versions/${v.id}`] = {
+      tree[p.id].versions[v.id] = {
         name: v.name, videoUrl: v.videoUrl, fps: v.fps, status: v.status,
         accessToken: v.accessToken, accessStatus: v.accessStatus,
         createdAt: v.createdAt, updatedAt: v.updatedAt,
       };
+      (v.comments || []).forEach((c) => {
+        if (!v.accessToken) return;
+        commentWrites[`cybrview/v1/reviews/${v.accessToken}/comments/${c.id}`] = c;
+      });
     });
   });
-  await d.ref(PROJECTS_BASE).set(updates);
+  await d.ref(PROJECTS_BASE).set(tree);
+  const keys = Object.keys(commentWrites);
+  if (keys.length) await d.ref().update(commentWrites);
   return true;
 }
 

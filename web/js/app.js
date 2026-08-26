@@ -163,11 +163,16 @@ function wireNewProjectForm() {
     const name = $('new-project-name')?.value.trim();
     if (!name) return;
     const client = $('new-project-client')?.value.trim() || '';
-    await session.addProject(name, client);
-    form.hidden = true;
-    btnNew.hidden = false;
-    $('new-project-name').value = '';
-    $('new-project-client').value = '';
+    try {
+      await session.addProject(name, client);
+      form.hidden = true;
+      btnNew.hidden = false;
+      $('new-project-name').value = '';
+      $('new-project-client').value = '';
+    } catch (e) {
+      console.error('addProject failed', e);
+      alert('// ERROR CREATE PROJECT\n' + (e?.message || e));
+    }
   });
 }
 
@@ -272,13 +277,18 @@ function renderDashboard() {
       if (!name) return;
       const url = form.querySelector('.ver-url')?.value.trim() || '';
       const fps = parseInt(form.querySelector('.ver-fps')?.value, 10) || 25;
-      const result = await session.addVersion(projectId, name, url, fps);
-      if (result?.token) {
-        const link = reviewUrl(result.token);
-        if (navigator.clipboard) { navigator.clipboard.writeText(link).catch(() => {}); }
-        alert(`Review link created and copied:\n${link}`);
+      try {
+        const result = await session.addVersion(projectId, name, url, fps);
+        if (result?.token) {
+          const link = reviewUrl(result.token);
+          if (navigator.clipboard) { navigator.clipboard.writeText(link).catch(() => {}); }
+          alert(`Review link created and copied:\n${link}`);
+        }
+        form.hidden = true;
+      } catch (e) {
+        console.error('addVersion failed', e);
+        alert('// ERROR ADD VERSION\n' + (e?.message || e));
       }
-      form.hidden = true;
     });
   });
 }
@@ -372,6 +382,7 @@ if (session.onProjects) {
 onAuth((user) => {
   authState = user;
   paintAuth(user);
+  if (user && session.ensureSeed) session.ensureSeed();
   route();
 });
 window.addEventListener('hashchange', route);

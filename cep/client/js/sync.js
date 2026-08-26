@@ -163,7 +163,13 @@
   function createProject(name, client) {
     var now = Date.now();
     return fb.createProject({ name: name, client: client || '', createdAt: now, updatedAt: now }).then(function (id) {
+      if (!state.projects.find(function (p) { return p.id === id; })) {
+        state.projects.push({ id: id, name: name, client: client || '', versions: [] });
+      }
       state.selectedProjectId = id;
+      state.selectedVersionId = null;
+      state.versions = [];
+      state.comments = [];
       notify();
       return id;
     });
@@ -184,6 +190,9 @@
     };
     return fb.createVersion(projectId, data).then(function (id) {
       var proj = state.projects.find(function (p) { return p.id === projectId; });
+      if (proj && !proj.versions.find(function (v) { return v.id === id; })) {
+        proj.versions.push({ id: id, name: name, status: 'DRAFT', accessToken: token, fps: fps || 25, videoUrl: videoUrl || '' });
+      }
       return fb.setReviewToken(token, {
         projectId: projectId,
         versionId: id,
@@ -196,9 +205,11 @@
       }).then(function () {
         state.selectedProjectId = projectId;
         state.selectedVersionId = id;
+        state.selectedToken = token;
         state.lastReviewLink = token;
-        notify();
+        detachComments();
         attachComments(token);
+        notify();
         return { id: id, token: token };
       });
     });

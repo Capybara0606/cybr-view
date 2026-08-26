@@ -174,6 +174,8 @@
   var createReviewLink = document.getElementById('create-review-link');
   var btnCopyLink = document.getElementById('btn-copy-link');
 
+  var DEPLOYED_BASE = 'https://capybara0606.github.io/cybr-view';
+
   if (btnCreate) {
     btnCreate.addEventListener('click', function () {
       var projectName = document.getElementById('create-project-name').value.trim();
@@ -192,7 +194,7 @@
         return sync.createVersion(projectId, versionName, videoUrl, fps);
       }).then(function (result) {
         btnCreate.disabled = false;
-        var link = location.origin + location.pathname + '#/review/' + result.token;
+        var link = DEPLOYED_BASE + '#/review/' + result.token;
         createReviewLink.value = link;
         createResult.hidden = false;
         _b('created OK: token=' + result.token.substring(0, 8) + '...');
@@ -225,6 +227,8 @@
   }
 
   /* --- STATE SUBSCRIPTION --- */
+  var lastProjectSig = '';
+  var lastVersionSig = '';
   sync.subscribe(function (s) {
     if (s.user) {
       authPanel.style.display = 'none';
@@ -240,7 +244,9 @@
     sysStatus.textContent = s.connected ? 'CONNECTED' : 'OFFLINE';
     sysStatus.className = 'val ' + (s.connected ? 'status-ok' : 'status-err');
 
-    if (s.projects.length && selProject.options.length <= 1) {
+    var projSig = s.projects.map(function (p) { return p.id; }).join(',');
+    if (projSig !== lastProjectSig) {
+      lastProjectSig = projSig;
       selProject.innerHTML = '<option value="">— SELECT PROJECT —</option>';
       s.projects.forEach(function (p) {
         var opt = document.createElement('option');
@@ -249,24 +255,26 @@
         if (s.selectedProjectId === p.id) opt.selected = true;
         selProject.appendChild(opt);
       });
-    } else if (!s.projects.length) {
-      selProject.innerHTML = '<option value="">— NO PROJECTS —</option>';
+      if (!s.projects.length) selProject.innerHTML = '<option value="">— NO PROJECTS —</option>';
     }
 
-    var hasVersions = s.versions.length > 0;
-    selVersion.disabled = !hasVersions && !s.selectedProjectId;
-    if (s.selectedProjectId && s.versions.length) {
+    var verSig = (s.selectedProjectId || '') + '|' + s.versions.map(function (v) { return v.id; }).join(',');
+    if (verSig !== lastVersionSig) {
+      lastVersionSig = verSig;
       selVersion.innerHTML = '<option value="">— SELECT VERSION —</option>';
-      s.versions.forEach(function (v) {
-        var opt = document.createElement('option');
-        opt.value = v.id;
-        opt.textContent = (v.name || '') + ' [' + (v.status || 'draft') + ']';
-        if (s.selectedVersionId === v.id) opt.selected = true;
-        selVersion.appendChild(opt);
-      });
-    } else if (s.selectedProjectId) {
-      selVersion.innerHTML = '<option value="">— NO VERSIONS —</option>';
+      if (s.selectedProjectId && s.versions.length) {
+        s.versions.forEach(function (v) {
+          var opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = (v.name || '') + ' [' + (v.status || 'draft') + ']';
+          if (s.selectedVersionId === v.id) opt.selected = true;
+          selVersion.appendChild(opt);
+        });
+      } else if (s.selectedProjectId) {
+        selVersion.innerHTML = '<option value="">— NO VERSIONS —</option>';
+      }
     }
+    selVersion.disabled = !s.selectedProjectId || !s.versions.length;
 
     var proj = s.projects.find(function (p) { return p.id === s.selectedProjectId; });
     var ver  = s.versions.find(function (v) { return v.id === s.selectedVersionId; });

@@ -7,7 +7,34 @@
 
 ---
 
-## [0.10.0] — 2026-08-26
+## [0.10.1] — 2026-08-26
+
+### Added
+- **FASE 12.1 — Creación de proyectos/versiones desde Web + CEP.**
+- Catálogo de proyectos/versiones migrado a Firebase RTDB (`cybrview/v1/projects/`).
+- Web (dashboard): botón `+ NEW PROJECT`, form inline, `+ VERSION` por proyecto con
+  nombre/URL/FPS, y generación automática de review link.
+- CEP panel: sección `/04 CREATE` con form project/version/video/FPS y review link copiable.
+- `web/js/firebase.js`: CRUD `createProject/updateProject/createVersion/updateVersion/
+  listenProjects/seedIfEmpty`.
+- `cep/client/js/firebase.js` + `sync.js`: mismas operaciones de creación desde el panel.
+
+### Fixed
+- `seedIfEmpty`: ahora escribe la estructura anidada correcta (`project/versions/*`) y los
+  comentarios demo bajo `reviews/{token}/comments` (antes usaba claves planas con `/`, inválido).
+- Seed ya no corre en el boot pre-login (falla por permisos); se dispara tras autenticar.
+- `addProject`/`addVersion`: push optimista en `tree` con dedupe (evita proyecto duplicado
+  por la carrera con el listener realtime); `addVersion` adjunta el listener al token correcto.
+- Dashboard: los contadores OPEN/RESOLVED ahora reflejan los comentarios reales de la versión
+  activa (el listener actualiza `tree`).
+- CEP `createVersion`: detacha el listener previo y actualiza `state` optimistamente (antes
+  escribía el token con `projectName` vacío y mezclaba comentarios de otra versión).
+- CEP review link: ahora usa la URL desplegada (`https://capybara0606.github.io/cybr-view`)
+  en lugar del origen del panel (`file://`).
+- CEP selectores de proyecto/versión: se reconstruyen cuando cambia la lista (los proyectos
+/versiones nuevos aparecen sin recargar).
+
+---
 
 ### Added
 - **FASE 12 — Sincronización bidireccional Web ↔ Firebase ↔ CEP.**
