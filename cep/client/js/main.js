@@ -329,6 +329,15 @@
         _b('export ERR: ' + s.error);
         return;
       }
+      if (s.status === 'canceled') {
+        setExportStatus('CANCELADO', 'status-warn');
+        return;
+      }
+      if (s.status === 'queued' && !s.queued) {
+        setExportStatus('JOB ENVIADO — pulsa Start Queue en Media Encoder si no avanza');
+        setTimeout(pollExport, 800);
+        return;
+      }
       var pct = Math.max(0, Math.min(100, Number(s.progress || 0)));
       exportFill.style.width = pct + '%';
       setExportStatus('RENDERIZANDO ' + Math.round(pct) + '%');

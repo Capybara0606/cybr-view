@@ -262,7 +262,7 @@ function findMarkerById(markers, commentId) {
    EXPORT PROXY (FASE 13) — render MP4 vía cola AME con progreso
    ============================================================ */
 
-var _export = { status: 'idle', progress: 0, message: '', error: '', outputPath: '', jobID: '' };
+var _export = { status: 'idle', progress: 0, message: '', error: '', outputPath: '', jobID: '', encoderReady: false, queued: false, bound: false };
 
 function _ppro_onProgress(jobID, progress) {
   _export.status = 'rendering';
@@ -273,6 +273,11 @@ function _ppro_onProgress(jobID, progress) {
     pct = Number(progress);
   }
   _export.progress = isNaN(pct) ? _export.progress : pct;
+}
+
+function _ppro_onQueued(jobID) {
+  _export.status = 'queued';
+  _export.queued = true;
 }
 
 function _ppro_onComplete(jobID) {
@@ -286,13 +291,21 @@ function _ppro_onError(jobID, msg) {
   _export.error = String(msg || 'RENDER_ERROR');
 }
 
+function _ppro_onCanceled(jobID) {
+  _export.status = 'canceled';
+}
+
 function cybr_bindEncoder() {
   if (_export.bound) return;
+  if (!app.encoder) { _export.encoderReady = false; return; }
   try { app.enableQE(); } catch (e) {}
   app.encoder.bind('onEncoderJobProgress', _ppro_onProgress);
+  app.encoder.bind('onEncoderJobQueued', _ppro_onQueued);
   app.encoder.bind('onEncoderJobComplete', _ppro_onComplete);
   app.encoder.bind('onEncoderJobError', _ppro_onError);
+  app.encoder.bind('onEncoderJobCanceled', _ppro_onCanceled);
   _export.bound = true;
+  _export.encoderReady = true;
 }
 
 function cybr_getActiveSequenceInfo() {
@@ -394,12 +407,23 @@ function cybr_startExport(presetPath, outputPath) {
     _export.error = '';
     _export.message = '';
     _export.outputPath = outputPath;
+    _export.queued = false;
 
-    try { app.encoder.launchEncoder(); } catch (e) {}
+    if (!_export.encoderReady) {
+      _export.status = 'error';
+      _export.error = 'NO_ENCODER: Adobe Media Encoder no disponible';
+      return JSON.stringify({ error: _export.error });
+    }
 
-    var jobID = app.encoder.encodeSequence(seq, outputPath, preset.fsName, app.encoder.ENCODE_ENTIRE, 0);
+    try { app.encoder.launchEncoder(); } catch (e) { _export.message += '; launch: ' + e.message; }
+
+    var jobID = app.encoder.encodeSequence(seq, outputPath, preset.fsName, app.encoder.ENCODE_ENTIRE, 1);
     _export.jobID = String(jobID);
-    return JSON.stringify({ ok: true, jobID: String(jobID) });
+
+    // Intenta que la cola de AME arranque automáticamente (si el método existe).
+    try { if (app.encoder.startBatch) app.encoder.startBatch(); } catch (e) {}
+
+    return JSON.stringify({ ok: true, jobID: String(jobID), encoderReady: _export.encoderReady });
   } catch (e) {
     _export.status = 'error';
     _export.error = 'Error al exportar: ' + e.message;
@@ -412,6 +436,6 @@ function cybr_getExportState() {
 }
 
 function cybr_resetExport() {
-  _export = { status: 'idle', progress: 0, message: '', error: '', outputPath: '', jobID: '' };
+  _export = { status: 'idle', progress: 0, message: '', error: '', outputPath: '', jobID: '', encoderReady: false, queued: false, bound: false };
   return JSON.stringify({ ok: true });
 }
