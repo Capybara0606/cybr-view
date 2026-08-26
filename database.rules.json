@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "cybrview": {
+      "v1": {
+        "tokens": {
+          "$token": {
+            ".read": true,
+            ".write": "auth != null"
+          }
+        },
+        "reviews": {
+          "$token": {
+            ".read": "root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'",
+            ".write": "auth != null || root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'",
+            "comments": {
+              "$commentId": {
+                ".read": "root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'",
+                ".write": "auth != null || root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'"
+              }
+            }
+          }
+        },
+        "projects": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    }
+  }
+}

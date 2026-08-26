@@ -5,8 +5,9 @@
  *   - en localStorage si no (modo local/DEV).
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
-import { defaultData, load, save, refreshVideoUrls } from './data.js';
-import { configured, listenComments, createComment, updateComment, deleteComment } from './firebase.js';
+import { defaultData, load, save, refreshVideoUrls, findByToken } from './data.js';
+import { configured, listenComments, createComment, updateComment, deleteComment, onConnection } from './firebase.js';
+import { canTransition } from './status.js';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
 
@@ -96,6 +97,71 @@ export function createSession() {
     return currentVersion()?.id;
   }
 
+  function resolveToken(token) {
+    return findByToken(tree, token);
+  }
+
+  function setAccessStatus(token, status) {
+    const found = findByToken(tree, token);
+    if (!found) return false;
+    found.version.accessStatus = status;
+    found.version.updatedAt = Date.now();
+    persistLocal();
+    return true;
+  }
+
+  /* ---------- actividad / estado de revisión (FASE 7) ---------- */
+  function logActivity(version, type, extra = {}) {
+    version.activity = version.activity || [];
+    version.activity.push({ type, at: Date.now(), ...extra });
+    if (version.activity.length > 100) version.activity = version.activity.slice(-100);
+  }
+
+  function setReviewStatus(versionId, to, author) {
+    for (const p of tree) {
+      const v = (p.versions || []).find((x) => x.id === versionId);
+      if (!v) continue;
+      if (!canTransition(v.status, to)) return { ok: false, reason: 'TRANSITION_NOT_ALLOWED' };
+      const prev = v.status;
+      v.status = to;
+      v.updatedAt = Date.now();
+      if (to === 'APPROVED') {
+        v.approvedAt = Date.now();
+        v.approvedBy = author;
+        v.reviewId = v.accessToken;
+      }
+      const type = {
+        APPROVED: 'review_approved',
+        SENT_FOR_REVIEW: prev === 'CHANGES_REQUESTED' ? 'review_reopened' : 'review_sent',
+        CHANGES_REQUESTED: 'review_changes_requested',
+        ARCHIVED: 'review_archived',
+      }[to] || `review_${to.toLowerCase()}`;
+      logActivity(v, type, { by: author });
+      persistLocal();
+      notifySelect();
+      return { ok: true, version: v };
+    }
+    return { ok: false, reason: 'NOT_FOUND' };
+  }
+
+  function approveActive(author) {
+    const v = currentVersion();
+    return setReviewStatus(v?.id, 'APPROVED', author);
+  }
+
+  async function openReview(token) {
+    const found = findByToken(tree, token);
+    if (!found) return { ok: false, reason: 'invalid' };
+    if (found.version.accessStatus !== 'active') {
+      return { ok: false, reason: 'revoked' };
+    }
+    projectId = found.project.id;
+    versionId = found.version.id;
+    notifySelect();
+    await attach();
+    return { ok: true, project: found.project, version: found.version };
+  }
+
   attach();
   return {
     getProjects: () => tree,
@@ -105,6 +171,12 @@ export function createSession() {
     selectProject,
     selectVersion,
     onSelect: (fn) => selectSubs.add(fn),
+    resolveToken,
+    openReview,
+    setAccessStatus,
+    setReviewStatus,
+    approveActive,
+    onConnection,
 
     /* ---- tienda para el panel de comentarios ---- */
     get: () => mirror,
@@ -129,6 +201,8 @@ export function createSession() {
         localMutate((v) => { v.comments = [data, ...v.comments]; });
         applyMirror(localComments());
       }
+      logActivity(currentVersion(), data.parentId ? 'reply_created' : 'comment_created', { by: data.authorName, commentId: data.id });
+      persistLocal();
     },
     async setStatus(id, status) {
       const patch = { status, updatedAt: Date.now() };
@@ -143,6 +217,8 @@ export function createSession() {
         localMutate((v) => { v.comments = v.comments.map((c) => (c.id === id ? { ...c, ...patch } : c)); });
         applyMirror(localComments());
       }
+      logActivity(currentVersion(), status === 'resolved' ? 'comment_resolved' : 'comment_reopened', { commentId: id });
+      persistLocal();
     },
     async remove(id) {
       if (useRemote) {

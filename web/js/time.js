@@ -39,5 +39,3 @@ export function formatCode(seconds) {
   const cs = Math.min(99, Math.round((seconds % 1) * 100));
   return `${pad(m)}:${pad(s)}.${pad(cs)}`;
 }
-
-export const padTime = pad;

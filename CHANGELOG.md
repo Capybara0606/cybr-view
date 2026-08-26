@@ -7,6 +7,88 @@
 
 ---
 
+## [0.9.0] — 2026-08-26
+
+### Fixed
+- **FASE 8 — Estabilización / auditoría.**
+- **Memory leak de listeners Firebase**: `listenComments` ahora devuelve un `off()` y
+  `session.attach()` lo invoca al cambiar de proyecto/versión (antes los listeners se
+  acumulaban en cada cambio).
+- Eliminado código muerto: export `padTime` (`time.js`) y `COMMENT_STATUS` (`status.js`).
+
+### Added
+- Estado de carga **`INITIALIZING REVIEW SYSTEM...`** (overlay) al arrancar.
+- **`README.md`**: qué es, arquitectura, Firebase, Drive, límite 160 MB, desarrollo local,
+  deployment, configuración y troubleshooting.
+
+### Changed
+- Versión `identity.version` → `0.9.0` (prod/dev); `meta.status` → `SENT_FOR_REVIEW`.
+
+### Audited
+- Responsive verificado en 1920/1440/1280/1024/768x1024/390/430 (sin overflow horizontal;
+  player + comentarios visibles en móvil).
+- Seguridad: sin secretos en el repo (solo la apiKey web pública de Firebase en `config/prod.js`).
+- GitHub Pages desde instalación limpia (workflow `path: web`; `web/media/` ignorado en git).
+
+---
+
+## [0.8.0] — 2026-08-26
+
+### Added
+- **FASE 7 — Gestión completa de revisiones.**
+- `web/js/status.js`: máquina de estados de revisión — `DRAFT → SENT_FOR_REVIEW →
+  CHANGES_REQUESTED → SENT_FOR_REVIEW → APPROVED → ARCHIVED` con transiciones permitidas
+  (sin saltos absurdos, validado con `canTransition`).
+- `web/js/data.js`: seed con nuevos estados (`SENT_FOR_REVIEW`/`CHANGES_REQUESTED`/`DRAFT`);
+  campos de versión `approvedAt`/`approvedBy`/`activity` (log); `reviewId` = token en aprobación.
+  Clave de storage renovada (`v4`).
+- `web/js/session.js`: `setReviewStatus` (valida transición), `approveActive` (registra
+  approvedAt/approvedBy/reviewId y conserva comentarios), activity log básico
+  (`comment_created`/`comment_resolved`/`comment_reopened`/`reply_created`/`review_approved`/
+  `review_reopened`/…), cableado en add/setStatus.
+- `web/js/comments.js`: **respuestas** (botón REPLY → `parentId` + tag `↳ REPLY`) y botón
+  DELETE oculto para el cliente (`canDelete: false`).
+- `web/js/app.js`: dashboard enriquecido (VERSION · REVIEW STATUS · OPEN/RESOLVED · LAST
+  ACTIVITY + acciones PUBLISH/REQUEST CHANGES/REOPEN/APPROVE/ARCHIVE) y botón **APPROVE**
+  del cliente con confirmación ("Approve this version?").
+- `shared/constants.js`: `REVIEW_STATUS`, `REVIEW_TRANSITIONS`, `ACTIVITY_TYPES`.
+
+### Changed
+- El dashboard muestra el estado de revisión y contadores abiertos/resueltos + última actividad.
+
+---
+
+## [0.7.0] — 2026-08-26
+
+### Added
+- **FASE 6 — Acceso y seguridad (editor autenticado + cliente por review token).**
+- `web/js/auth.js`: autenticación del editor. Usa **Firebase Authentication** (email/password)
+  cuando hay config; en modo local/DEV simula una sesión de editor (para pruebas).
+- `web/js/firebase.js`: añadido `signInWithEmail`, `signOutUser`, `onAuthState` + app única
+  compartida entre database y auth.
+- `web/js/data.js`: `generateToken()` (96 bits aleatorios) y campos `accessToken`/`accessStatus`
+  (`active`/`revoked`) por versión + `findByToken(tree, token)`.
+- `web/js/session.js`: `resolveToken(token)`, `openReview(token)` y `setAccessStatus(token, status)`.
+- `web/js/app.js` (rehecho): **router por hash** con vistas `#/login`, `#/dashboard` (requiere
+  auth) y `#/review/:token` (público). El cliente no ve selectores ni dashboard. Revocación desde
+  el dashboard; token inválido/revocado → **`REVIEW ACCESS DENIED`**.
+- `web/index.html`: vistas login / dashboard / review + logout + `firebase/auth` en el importmap.
+- `web/css/app.css`: estilos de login, dashboard y acceso denegado.
+- **`SECURITY.md`**: modelo de acceso, review tokens, revocación, reglas y limitaciones.
+- **`database.rules.json`**: reglas de RTDB (editor `auth!=null`; cliente por `reviews/{token}`
+  si `tokens/{token}.status == active`). Desplegar con `firebase deploy --only database`.
+
+### Changed
+- La review ya no muestra selectores de proyecto/versión (el editor gestiona desde el dashboard;
+  el cliente solo ve su versión por token).
+
+### Seguridad / honestidad
+- La seguridad real está en **Firebase Rules** (no en JS/UI). El código está probado en **modo
+  local/DEV**; para producción faltan (requiere tu cuenta Firebase): habilitar Email/Password,
+  crear el usuario editor y desplegar las reglas (ver `SECURITY.md`).
+
+---
+
 ## [0.6.1] — 2026-08-26
 
 ### Fixed (auditoría del video de Drive)

@@ -195,16 +195,24 @@ cerrar funcionalidad de producto.
 
 ---
 
-## FASE 9 — Video multi-proveedor / CDN (abstracción)
+## FASE 9 — Video desde Drive (proxy de revisión, ≤ 160 MB)
 
 **Alcance:**
-- Adaptador `videoSource` con proveedores: `drive | s3 | b2 | cloudflare_stream | mux | vimeo`.
-- Presets de calidad y protección (URLs firmadas, tokens de acceso).
-- Documentación del pipeline (parte del entregable de este roadmap).
+- **Regla oficial:** `MAX_VIDEO_SIZE_MB = 160` (constante central en `shared/constants.js`).
+  CYBR VIEW nunca considera válido un proxy de revisión **> 160 MB**.
+- Proxy de revisión en **Google Drive**: MP4 · H.264 · AAC · 1080p (720p aceptable).
+  El **master** permanece fuera de CYBR VIEW.
+- El navegador carga el proxy **directamente** desde la URL de Drive configurada.
+  **Sin servidor intermedio de video** (sin Node.js / Vercel / Cloudflare Worker /
+  streaming backend / transcodificación).
+- Validación de tamaño: preferir validar metadatos antes de reproducir; si no es fiable
+  desde el navegador, documentar + mensaje en UI + validar en el flujo de subida/preparación.
 
 **Criterios de aceptación:**
-- Cambiar de proveedor NO toca la lógica de comentarios/reproductor.
-- Gestión de CORS/headers documentada y probada.
+- Todo video de revisión ≤ 160 MB y con la spec MP4/H.264/AAC.
+- La URL de Drive se sirve directo (Range/seek) o se documenta la limitación conocida
+  (`Cross-Origin-Resource-Policy: same-site`, ver ARCHITECTURE §7).
+- Sin servidor de video intermedio en la arquitectura.
 
 ---
 

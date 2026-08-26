@@ -8,12 +8,19 @@
 import { formatCode } from './time.js';
 import { CONFIG } from './config.js';
 
-const KEY = 'cybrview:projects:v3';
+const KEY = 'cybrview:projects:v4';
 const now = () => Date.now();
 
 export function commentSequence() {
   let n = 100;
   return () => `comment_${String(++n).padStart(3, '0')}`;
+}
+
+/** Token de review aleatorio (96 bits). No se usan IDs como seguridad. */
+export function generateToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function mkComment(id, time, body) {
@@ -33,7 +40,21 @@ function mkComment(id, time, body) {
 
 function mkVersion(id, videoUrl, status, comments) {
   const t = now();
-  return { id, name: id, videoUrl, fps: 25, status, createdAt: t, updatedAt: t, comments };
+  return {
+    id,
+    name: id,
+    videoUrl,
+    fps: 25,
+    status, // review status (DRAFT/SENT_FOR_REVIEW/CHANGES_REQUESTED/APPROVED/ARCHIVED)
+    createdAt: t,
+    updatedAt: t,
+    comments,
+    accessToken: generateToken(),
+    accessStatus: 'active', // 'active' | 'revoked'
+    approvedAt: null,
+    approvedBy: null,
+    activity: [], // activity log básico
+  };
 }
 
 function seedDefault() {
@@ -45,16 +66,16 @@ function seedDefault() {
       createdAt: now(),
       updatedAt: now(),
       versions: [
-        mkVersion('V01', v.videoV01, 'WAITING FOR REVIEW', [
+        mkVersion('V01', v.videoV01, 'SENT_FOR_REVIEW', [
           mkComment('c1', 5, 'Revisar el fundido de entrada.'),
           mkComment('c2', 12, 'El título aparece muy pronto.'),
           mkComment('c3', 34.27, 'El corte está demasiado rápido.'),
         ]),
-        mkVersion('V02', v.videoV02, 'IN REVIEW', [
+        mkVersion('V02', v.videoV02, 'CHANGES_REQUESTED', [
           mkComment('c4', 3, 'Probar aquí el nuevo audio.'),
           mkComment('c5', 8, 'El gráfico de entrada se ve mejor.'),
         ]),
-        mkVersion('V03', v.videoV03, 'APPROVED', []),
+        mkVersion('V03', v.videoV03, 'DRAFT', []),
       ],
     },
     {
@@ -63,7 +84,7 @@ function seedDefault() {
       createdAt: now(),
       updatedAt: now(),
       versions: [
-        mkVersion('V01', v.videoShorts, 'WAITING FOR REVIEW', [
+        mkVersion('V01', v.videoShorts, 'SENT_FOR_REVIEW', [
           mkComment('c6', 10, 'Ajustar el ritmo aquí.'),
         ]),
       ],
@@ -107,4 +128,15 @@ export function save(data) {
   } catch {
     /* sin almacenamiento (quota / privado) */
   }
+}
+
+/** Busca una revisión por su token. Devuelve { project, version } o null. */
+export function findByToken(tree, token) {
+  if (!token) return null;
+  for (const p of tree) {
+    for (const v of p.versions || []) {
+      if (v.accessToken === token) return { project: p, version: v };
+    }
+  }
+  return null;
 }

@@ -32,13 +32,10 @@ ADOBE PREMIERE PRO (playhead + marcadores)
 
 ## 2. Estado de desarrollo
 
-**FASE 0 — Arquitectura y documentación (completa).**
-**FASE 1 — Scaffold Web + Reproductor de video (completa).** `web/` implementa la
-identidad visual y un reproductor de video custom (play/pause/seek/frame/volumen/
-fullscreen/timeline) con `VIDEO_URL` centralizada en `web/js/config.js`. Sin Firebase,
-sin comentarios, sin CEP.
-**PRÓXIMA — FASE 2** (Firebase RTDB + Auth). No adelantar.
+**FASES 0–5.5 completas** (arquitectura, reproductor, comentarios con timecode, Firebase
+RTDB, proyectos/versiones y MVP web estático publicado en GitHub Pages).
 Ver `ARCHITECTURE.md` y `ROADMAP.md`.
+**Siguiente:** autenticación / CEP / Premiere (según roadmap). No adelantar fases.
 
 ## 3. Stack (decidido, no negociable)
 
@@ -47,7 +44,7 @@ Ver `ARCHITECTURE.md` y `ROADMAP.md`.
 | Web (cliente) | HTML · CSS · **Vanilla JS (ES Modules)** · Firebase Web SDK modular v9+ |
 | Backend | Firebase **Realtime Database** · Firebase **Authentication** |
 | Premiere | CEP (`manifest.xml`) · HTML · CSS · JS · **ExtendScript** (`*.jsx`, ES3) · `CSInterface.js` |
-| Video | URL configurable. **NO** se almacena en Firebase. Multi-proveedor/CDN a futuro. |
+| Video | **Proxy de revisión** en Google Drive (MP4/H.264/AAC, 720p–1080p, **máx 160 MB**). Se sirve **directo** desde la URL de Drive, **sin servidor/proxy intermedio**. El master queda fuera. |
 
 Registro de decisiones de arquitectura (ADR) en `docs/DECISIONS.md`.
 
@@ -176,3 +173,24 @@ Principios visuales que SIEMPRE deben respetarse:
 - Cualquier cambio de arquitectura se documenta como nuevo ADR en `docs/DECISIONS.md`
   y se refleja en `ARCHITECTURE.md`. 
 - Editar `CHANGELOG.md` con cada cambio relevante.
+
+## 10. Reglas de video (OFICIAL)
+
+- **Almacenamiento:** Google Drive. CYBR VIEW solo recibe **proxies de revisión**; el
+  **master** permanece fuera de CYBR VIEW.
+- **Tamaño máximo:** `MAX_VIDEO_SIZE_MB = 160` (constante central en `shared/constants.js`).
+  Nunca considerar como video válido de revisión un archivo **> 160 MB**.
+- **Especificación recomendada:** contenedor **MP4** · códec de video **H.264** · códec de
+  audio **AAC** · resolución **1080p** (720p aceptable).
+- **Entrega:** el navegador carga el proxy **directamente** desde la URL de Google Drive
+  configurada. **NO** se introduce ningún servidor intermedio de video:
+  - sin servidor de video Node.js;
+  - sin proxy en Vercel;
+  - sin proxy Cloudflare Worker;
+  - sin backend de streaming custom;
+  - sin servidor de transcodificación.
+- **Validación de tamaño:** preferir validar los metadatos antes de reproducir cuando sea
+  técnicamente posible. Si el navegador no puede determinar de forma fiable el tamaño remoto
+  antes de cargar, **no** implementar una comprobación frágil de tamaño en el cliente; en su
+  lugar: documentar el requisito, mostrar un mensaje claro en la UI y validar en el flujo de
+  subida/preparación cuando exista.

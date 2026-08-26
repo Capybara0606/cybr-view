@@ -11,6 +11,28 @@
   box-sizing: border-box;
 }
 
+/* FASE 8: boot overlay (LOADING) */
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--green);
+  transition: opacity 320ms ease;
+}
+
+.boot.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -1153,4 +1175,216 @@ button {
     min-width: 0;
     flex: 1 1 auto;
   }
+}
+
+/* ---------- FASE 6: vistas / auth / dashboard ---------- */
+.view[hidden] {
+  display: none !important;
+}
+
+.auth-user {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-left: 4px;
+}
+
+.btn-logout {
+  margin-left: 6px;
+  padding: 4px 8px;
+  font-size: 9px;
+}
+
+/* acceso denegado */
+.review-denied {
+  padding: 48px 24px;
+  border: var(--border-w) solid var(--danger);
+  background: var(--bg);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.review-denied[hidden] {
+  display: none;
+}
+
+.denied-code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--danger);
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.denied-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+/* login */
+.login-panel {
+  max-width: 420px;
+  margin: 40px auto 0;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 0;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field input {
+  background: var(--bg);
+  border: var(--border-w) solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.login-field input:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+.login-error {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--danger);
+  letter-spacing: 0.04em;
+  border: var(--border-w) solid var(--danger);
+  padding: 8px 10px;
+}
+
+.login-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 18px;
+}
+
+/* dashboard */
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-project {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 0 4px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.dash-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  flex-wrap: wrap;
+}
+
+.dash-ver {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  min-width: 40px;
+}
+
+.dash-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border: var(--border-w) solid var(--border);
+}
+
+.dash-status.s-active {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.dash-status.s-revoked {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.dash-token {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* FASE 7: dashboard enriquecido + aprobación + replies */
+.dash-rs {
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+.dash-counts {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.dash-last {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.approve-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: var(--border-w) solid var(--green);
+  background: var(--surface);
+}
+
+.approve-bar[hidden] {
+  display: none;
+}
+
+.approve-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comment-reply-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--green);
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
 }

@@ -1,66 +1,62 @@
 /**
- * CYBR VIEW — capa de datos Firebase Realtime Database (FASE 5.5).
- * SDK modular v9+ cargado por importmap (esm.sh), import dinámico (sin build).
+ * CYBR VIEW — capa de datos Firebase (RTDB + Auth) — SDK compat v10 (gstatic).
+ * Los builds oficiales de gstatic se cargan en index.html (firebase-app/database/auth-compat).
  * Si la config de Firebase está vacía -> `configured` false y la app corre local.
  *
  * Estructura: cybrview/v1/projects/{projectId}/versions/{versionId}/comments/{commentId}
- *
- * ⚠️ Reglas de RTDB = DESARROLLO. No aptas para producción hasta conectar Auth.
  */
 import { CONFIG } from './config.js';
 
 const fireConfig = CONFIG.firebase || {};
 
-/** true => se usa RTDB. false => modo LOCAL/DEV. */
+/** true => se usa RTDB/Auth. false => modo LOCAL/DEV. */
 export const configured = Boolean(fireConfig.apiKey && fireConfig.databaseURL && fireConfig.projectId);
 
-let dbPromise = null;
+let appPromise = null;
 
-async function ensureDatabase() {
-  if (!dbPromise) {
-    dbPromise = (async () => {
-      const { initializeApp } = await import('firebase/app');
-      const { getDatabase } = await import('firebase/database');
-      return getDatabase(initializeApp({ ...fireConfig }));
-    })().catch((err) => {
-      dbPromise = null;
-      throw err;
+function ensureApp() {
+  if (!appPromise) {
+    appPromise = Promise.resolve().then(() => {
+      const fb = window.firebase;
+      if (!fb || !fb.initializeApp) throw new Error('FIREBASE_SDK_NOT_LOADED');
+      return fb.initializeApp({ ...fireConfig });
     });
   }
-  return dbPromise;
+  return appPromise;
+}
+
+async function db() {
+  const app = await ensureApp();
+  return app.database();
 }
 
 function commentsPath(projectId, versionId) {
   return `cybrview/v1/projects/${projectId}/versions/${versionId}/comments`;
 }
 
-/** Listener realtime de los comentarios de una versión. Devuelve callback para desuscribir. */
+/** Listener realtime de los comentarios de una versión. Devuelve una función para desuscribir. */
 export async function listenComments(projectId, versionId, callback) {
-  const d = await ensureDatabase();
-  const { ref, onValue } = await import('firebase/database');
-  onValue(ref(d, commentsPath(projectId, versionId)), (snap) => callback(snap.val()));
+  const d = await db();
+  const ref = d.ref(commentsPath(projectId, versionId));
+  const cb = (snap) => callback(snap.val());
+  ref.on('value', cb);
+  return () => ref.off('value', cb);
 }
 
-/** Crea un comentario (id = clave del nodo). */
 export async function createComment(projectId, versionId, comment) {
-  const d = await ensureDatabase();
-  const { ref, child, set } = await import('firebase/database');
+  const d = await db();
   const { id, ...payload } = comment;
-  await set(child(ref(d, commentsPath(projectId, versionId)), id), payload);
+  await d.ref(commentsPath(projectId, versionId)).child(id).set(payload);
 }
 
-/** Actualiza campos de un comentario. */
 export async function updateComment(projectId, versionId, id, patch) {
-  const d = await ensureDatabase();
-  const { ref, child, update } = await import('firebase/database');
-  await update(child(ref(d, commentsPath(projectId, versionId)), id), patch);
+  const d = await db();
+  await d.ref(commentsPath(projectId, versionId)).child(id).update(patch);
 }
 
-/** Elimina un comentario. */
 export async function deleteComment(projectId, versionId, id) {
-  const d = await ensureDatabase();
-  const { ref, child, remove } = await import('firebase/database');
-  await remove(child(ref(d, commentsPath(projectId, versionId)), id));
+  const d = await db();
+  await d.ref(commentsPath(projectId, versionId)).child(id).remove();
 }
 
 /** Estado de conexión del backend (para la UI). */
@@ -69,10 +65,32 @@ export function onConnection(cb) {
     cb({ backend: 'local', connected: null });
     return;
   }
-  ensureDatabase()
-    .then(async (d) => {
-      const { ref, onValue } = await import('firebase/database');
-      onValue(ref(d, '.info/connected'), (s) => cb({ backend: 'firebase', connected: s.val() === true }));
+  db()
+    .then((d) => {
+      d.ref('.info/connected').on('value', (s) => cb({ backend: 'firebase', connected: s.val() === true }));
     })
     .catch(() => cb({ backend: 'firebase', connected: false }));
+}
+
+/* ---------- Firebase Authentication (editor) ---------- */
+
+export async function signInWithEmail(email, password) {
+  const app = await ensureApp();
+  return app.auth().signInWithEmailAndPassword(email, password);
+}
+
+export async function signOutUser() {
+  const app = await ensureApp();
+  return app.auth().signOut();
+}
+
+export function onAuthState(cb) {
+  if (!configured) {
+    cb(null);
+    return () => {};
+  }
+  ensureApp()
+    .then((app) => app.auth().onAuthStateChanged(cb))
+    .catch(() => cb(null));
+  return () => {};
 }

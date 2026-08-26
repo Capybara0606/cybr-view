@@ -9,7 +9,7 @@ import { commentSequence } from './data.js';
 
 const AUTHOR = 'GUEST';
 
-export function createComments({ store, player }) {
+export function createComments({ store, player, canDelete = false }) {
   const listEl = document.getElementById('comments-list');
   const emptyEl = document.getElementById('comments-empty');
   const counterEl = document.getElementById('comments-counter');
@@ -23,6 +23,7 @@ export function createComments({ store, player }) {
   const nextId = commentSequence();
   let capturedTime = null;
   let activeId = null;
+  let replyTo = null;
 
   /* ---------- selección / seek ---------- */
   function select(id, seek = true) {
@@ -72,8 +73,11 @@ export function createComments({ store, player }) {
       createdAt: now,
       updatedAt: now,
     };
+    if (replyTo) comment.parentId = replyTo;
     store.add(comment);
     composer.value = '';
+    replyTo = null;
+    composer.placeholder = 'Escribe un comentario...';
     activated();
     composer.focus();
     capturedTime = player.getTime();
@@ -83,6 +87,13 @@ export function createComments({ store, player }) {
   function activated() {
     capturedTime = player.getTime();
     composerCode.textContent = `[${formatCode(capturedTime)}]`;
+  }
+  function startReply(id) {
+    replyTo = id;
+    const parent = store.find(id);
+    composer.placeholder = `Responder a ${parent?.authorName || '...'}`;
+    composerCode.textContent = `[${formatCode(capturedTime ?? player.getTime())}] ↳ REPLY`;
+    composer.focus();
   }
 
   /* ---------- render ---------- */
@@ -110,9 +121,23 @@ export function createComments({ store, player }) {
     const text = document.createElement('div');
     text.className = 'comment-text';
     text.textContent = c.body;
+    if (c.parentId) {
+      const replyTag = document.createElement('div');
+      replyTag.className = 'comment-reply-tag';
+      replyTag.textContent = '↳ REPLY';
+      text.after(replyTag);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'comment-actions';
+    const reply = document.createElement('button');
+    reply.type = 'button';
+    reply.className = 'btn btn-ghost';
+    reply.textContent = '[ REPLY ]';
+    reply.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startReply(c.id);
+    });
     const resolve = document.createElement('button');
     resolve.type = 'button';
     resolve.className = 'btn btn-ghost';
@@ -121,16 +146,20 @@ export function createComments({ store, player }) {
       e.stopPropagation();
       store.setStatus(c.id, c.status === 'open' ? 'resolved' : 'open');
     });
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'btn btn-ghost btn-danger';
-    del.textContent = '[ DELETE ]';
-    del.setAttribute('aria-label', `Eliminar comentario en ${c.timeCode}`);
-    del.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (window.confirm(`Eliminar comentario en ${c.timeCode}?`)) store.remove(c.id);
-    });
-    actions.append(resolve, del);
+    actions.append(reply, resolve);
+
+    if (canDelete) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn btn-ghost btn-danger';
+      del.textContent = '[ DELETE ]';
+      del.setAttribute('aria-label', `Eliminar comentario en ${c.timeCode}`);
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.confirm(`Eliminar comentario en ${c.timeCode}?`)) store.remove(c.id);
+      });
+      actions.append(del);
+    }
 
     item.append(head, meta, text, actions);
     item.addEventListener('click', () => select(c.id, true));

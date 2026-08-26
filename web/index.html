@@ -9,16 +9,12 @@
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/app.css" />
   <link rel="icon" href="assets/kiru-icon.svg" type="image/svg+xml" />
-  <script type="importmap">
-    {
-      "imports": {
-        "firebase/app": "https://esm.sh/firebase@10.12.2/app",
-        "firebase/database": "https://esm.sh/firebase@10.12.2/database"
-      }
-    }
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
+  <div class="boot" id="boot" role="status">INITIALIZING REVIEW SYSTEM...</div>
   <div class="app">
 
     <header class="topbar" role="banner">
@@ -27,8 +23,8 @@
       </div>
 
       <nav class="nav" role="navigation" aria-label="Secciones principales">
-        <button class="nav-item" type="button" data-nav="projects">PROJECTS</button>
-        <button class="nav-item is-active" type="button" data-nav="reviews">REVIEWS</button>
+        <button class="nav-item" type="button" data-nav="dashboard">DASHBOARD</button>
+        <button class="nav-item is-active" type="button" data-nav="review">REVIEW</button>
         <button class="nav-item" type="button" data-nav="system">SYSTEM</button>
       </nav>
 
@@ -36,23 +32,30 @@
         <span class="status-dot" aria-hidden="true"></span>
         <span class="status-label">SYSTEM ONLINE</span>
         <span class="status-idx">LOCAL // DEV</span>
+        <span class="auth-user" id="auth-user"></span>
+        <button class="btn btn-ghost btn-logout" id="btn-logout" type="button" hidden>LOGOUT</button>
       </div>
     </header>
 
     <div class="modbar" id="modbar" role="status">STORAGE // LOCAL DEV · datos en localStorage</div>
 
-    <main class="shell" role="main">
+    <main class="shell view" role="main" id="view-review">
       <section class="panel">
 
         <header class="section-head">
           <div class="section-title">
             <span class="section-num" aria-hidden="true">/00</span>
-            <h1 class="section-name">REVIEW SELECT</h1>
+            <h1 class="section-name">REVIEW</h1>
           </div>
           <span class="section-id">CYBR_VIEW.module://review</span>
         </header>
 
-        <div class="selector-stack">
+        <div class="review-denied" id="review-denied" hidden>
+          <span class="denied-code">REVIEW ACCESS DENIED</span>
+          <span class="denied-text" id="denied-text">// este enlace de revisión no es válido o fue revocado</span>
+        </div>
+
+        <div class="selector-stack" id="selector-stack">
           <div class="selector-row">
             <span class="section-num" aria-hidden="true">/01</span>
             <span class="selector-label">PROJECT //</span>
@@ -73,7 +76,6 @@
         </div>
 
         <div class="review-grid">
-
           <div class="review-main">
             <div class="meta-grid" data-meta-root>
               <div class="meta">
@@ -92,6 +94,11 @@
                 <span class="meta-label">FPS //</span>
                 <span class="meta-value" data-meta-fps>—</span>
               </div>
+            </div>
+
+            <div class="approve-bar" id="approve-bar" hidden>
+              <span class="approve-label">REVIEW STATUS // <span id="review-status-label">—</span></span>
+              <button class="btn btn-send" id="btn-approve" type="button">APPROVE VERSION</button>
             </div>
 
             <section class="player-block" aria-label="Reproductor de video">
@@ -183,17 +190,54 @@
               <span class="empty-text">// 00 registros</span>
             </div>
           </aside>
-
         </div>
 
         <footer class="foot">
           <span class="foot-brand"><img class="foot-logo" src="assets/kiru-icon.svg" alt="KIRU" /> KIRU</span>
           <span class="foot-tagline">VIDEO REVIEW // SYSTEM</span>
-          <span class="foot-ver">v0.6.0</span>
+          <span class="foot-ver">v0.9.0</span>
         </footer>
 
       </section>
     </main>
+
+    <div class="view" id="view-login" hidden>
+      <div class="panel login-panel">
+        <header class="section-head">
+          <div class="section-title">
+            <span class="section-num" aria-hidden="true">/01</span>
+            <h1 class="section-name">EDITOR ACCESS</h1>
+          </div>
+          <span class="section-id">CYBR_VIEW.module://login</span>
+        </header>
+        <form id="login-form" class="login-form" autocomplete="on">
+          <label class="login-field">
+            <span class="meta-label">EMAIL //</span>
+            <input id="login-email" type="email" autocomplete="username" placeholder="editor@kiru" required />
+          </label>
+          <label class="login-field">
+            <span class="meta-label">PASSWORD //</span>
+            <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+          </label>
+          <div class="login-error" id="login-error" role="alert" hidden></div>
+          <button class="btn btn-send" type="submit">SIGN IN</button>
+        </form>
+        <p class="login-hint">CLIENTS DO NOT LOG IN // they open a review link</p>
+      </div>
+    </div>
+
+    <div class="view" id="view-dashboard" hidden>
+      <div class="panel">
+        <header class="section-head">
+          <div class="section-title">
+            <span class="section-num" aria-hidden="true">/00</span>
+            <h1 class="section-name">DASHBOARD</h1>
+          </div>
+          <span class="section-id">CYBR_VIEW.module://admin</span>
+        </header>
+        <div id="dashboard-list" class="dashboard-list"></div>
+      </div>
+    </div>
 
   </div>
   <script type="module" src="js/app.js"></script>

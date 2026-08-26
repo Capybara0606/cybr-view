@@ -117,17 +117,57 @@ No existe canal directo Web↔CEP. Todo pasa por RTDB. El contrato es:
 **Nodo de presencia / estado:**
 - `presence/` para indicar quién está conectado (viewport de seguridad/UX).
 
-## 7. Pipeline de video (fuente configurable)
+### 6.1 Acceso y seguridad (FASE 6)
 
-El video **no** se almacena en Firebase. Ver detalle en `docs/VIDEO-PIPELINE.md`.
+- **Cliente:** sin cuenta. Entra por `#/review/:token` (token aleatorio, revocable). No ve el
+  dashboard ni otros proyectos/versiones.
+- **Editor:** autenticado con Firebase Authentication (email/password). Dashboard con revocación
+  de links.
+- **Seguridad en RTDB** (`database.rules.json`): editor `auth != null`; cliente por
+  `reviews/{token}` solo si `tokens/{token}.status == 'active'`. Ver `SECURITY.md`.
 
-- Una **URL configurable** por versión (`version.videoUrl`).
-- El Web monta un `<video>` apuntando a esa URL. MP4 (H.264/AAC) como formato base.
-- **CORS/CDN:** el proveedor de la URL debe enviar `Access-Control-Allow-Origin` para
-  funcionalidades cruzadas, y soportar **HTTP Range** (`Accept-Ranges`) para el *seek*.
-- **Backends futuros (abstracción):** `Drive | S3 | Backblaze B2 | Cloudflare Stream |
-  Mux | Vimeo`. Se define un adaptador `videoSource` que, por ahora, solo emite la URL
-  (fase 1) y a futuro puede pedir presets/calidades o un token de acceso firmado.
+### 6.2 Estados de revisión y aprobación (FASE 7)
+
+Máquina de estados de una **versión** (`web/js/status.js`):
+
+```
+DRAFT ──► SENT_FOR_REVIEW ──► CHANGES_REQUESTED ──► SENT_FOR_REVIEW ──► APPROVED ──► ARCHIVED
+  │                              ▲                                                    │
+  └──────────────────────────────┘                                                    └─ (terminal)
+   (también DRAFT ─► ARCHIVED)
+```
+
+- Transiciones validadas (`canTransition`); no se permiten saltos absurdos.
+- **Aprobación** (cliente): `SENT_FOR_REVIEW → APPROVED` con confirmación; registra
+  `approvedAt`, `approvedBy`, `reviewId` (= token) y **no borra los comentarios** (historial).
+- **Activity log** básico por versión: `comment_created`, `comment_resolved`, `comment_reopened`,
+  `reply_created`, `review_approved`, `review_reopened`, etc.
+
+## 7. Pipeline de video (proxy de revisión en Drive)
+
+El video **no** se almacena en Firebase ni en el repositorio. CYBR VIEW recibe solo un
+**proxy de revisión** ligero; el **master** permanece fuera del sistema.
+
+- **Almacenamiento:** Google Drive. **Máximo oficial: 160 MB** (`MAX_VIDEO_SIZE_MB = 160`
+  en `shared/constants.js`). Un archivo **> 160 MB nunca es un video válido de revisión**.
+- **Especificación:** MP4 · H.264 · AAC · 1080p (720p aceptable).
+- **Entrega:** el `<video>` carga **directamente** la URL de Drive configurada por versión
+  (`version.videoUrl`). **No hay servidor intermedio de video** (sin Node.js, Vercel,
+  Cloudflare Worker, backend de streaming custom ni servidor de transcodificación).
+- **Range/seek:** el host debe servir `Accept-Ranges` y `video/mp4` (para el *seek* del
+  reproductor). Se valida con `curl -I`.
+- **Validación de tamaño:** preferir validar metadatos antes de reproducir si es posible.
+  Si el navegador no puede saber el tamaño remoto de forma fiable antes de cargar, **no**
+  añadir un chequeo frágil en cliente; documentar el requisito + mensaje claro en UI +
+  validar en el flujo de subida/preparación cuando exista.
+
+> ⚠️ **Limitación conocida (verificada empíricamente):** el servidor de descarga de Google
+> Drive añade cabeceras (`Cross-Origin-Resource-Policy: same-site`, `Cross-Origin-Embedder-Policy`,
+> `Content-Security-Policy: sandbox`, `Set-Cookie`) que **pueden bloquear** la reproducción
+> cross-origin del `<video>` en Chrome (error `ERR_BLOCKED_BY_RESPONSE`). Para que la entrega
+> "directa desde Drive" funcione en producción, esta limitación debe resolverse (ajuste de
+> compartición en Drive o una solución de cabeceras). Se documenta para no asumir que funciona
+> sin verificar.
 
 ## 8. Arquitectura del CEP (a futuro)
 
@@ -146,7 +186,7 @@ Puntos clave documentados en `docs/CEP-ARCHITECTURE.md`:
 
 | # | Riesgo | Impacto | Solución propuesta |
 |---|--------|---------|--------------------|
-| R1 | **Google Drive** como fuente de video | Alto | Drive tiene CORS restrictivo y límites de tráfico/expiración; no apto como CDN real. Usarlo solo para dev. Producir MP4 y usar CDN real (Backblaze/S3/Cloudflare). Contrato `videoSource` para proveedor. |
+| R1 | **Google Drive** como fuente de video | Alto | Solo **proxies de revisión ≤ 160 MB** (`MAX_VIDEO_SIZE_MB`). Drive sirve con `Range`/CORS para archivos pequeños; para cross-origin puede bloquear por `Cross-Origin-Resource-Policy: same-site` (ver §7). No introducir servidor de video intermedio. |
 | R2 | **Reproducción MP4 / códecs** | Medio | Usar MP4 H.264/AAC (compatible con la mayoría). MOV/ProRes no reproducibles en navegador. Asegurar **Range requests** para el seek. `crossOrigin` solo si se usa canvas/analytics. |
 | R3 | **CORS** en video | Medio | Exigir `Access-Control-Allow-Origin` en host/CDN; probar con `curl -I`. Para Firebase RTDB REST, el CORS funciona. |
 | R4 | **Autoplay de navegador** | Bajo | Autoplay con audio requiere gesto del usuario o *muted*. La Web es guiada por click, así que se evita. |
@@ -177,8 +217,11 @@ Puntos clave documentados en `docs/CEP-ARCHITECTURE.md`:
 | ADR-012 | **Proyectos/versiones en local (localStorage)** | Firebase ya en esta fase | Aceptada. Grafo `projects/versions/comments` local; `firebase.js` listo para migrar. |
 | ADR-013 | **Store de comentarios segmentado por versión** | Store global | Aceptada. Cada versión tiene sus comentarios; nunca se mezclan. |
 | ADR-014 | **Entornos config (dev/prod) sin build** | Build/env en node | Aceptada. `web/js/config/{dev,prod}.js`; `?env=dev` o prod por defecto. |
-| ADR-015 | **Video Drive vía proxy Cloudflare Worker** | Migrar a otro CDN | Aceptada. `deploy/worker/worker.js`; `version.videoUrl` → proxy. |
+| ADR-015 | ~~Video Drive vía proxy Cloudflare Worker~~ | Migrar a otro CDN | **Superada** por ADR-017 (entrega directa, sin servidor intermedio). |
 | ADR-016 | **Firebase solo para comentarios** | Firebase para todo | Aceptada. GitHub Pages estático; Drive guarda video. |
+| ADR-017 | **Proxy de revisión ≤ 160 MB, servido directo desde Drive (sin servidor de video intermedio)** | Servidor/proxy de video (Node/Vercel/Worker/transcode) | Aceptada. `MAX_VIDEO_SIZE_MB = 160`; MP4/H.264/AAC/1080p; el navegador carga la URL de Drive directamente; el master queda fuera. |
+| ADR-018 | **Acceso por review token (cliente sin cuenta) + editor autenticado** | IDs simples / auth para el cliente | Aceptada. Cliente entra por `#/review/:token` (token aleatorio de 96 bits, revocable). Editor usa Firebase Authentication (email/password). La seguridad está en las reglas de RTDB (`database.rules.json` / `SECURITY.md`). |
+| ADR-020 | **Estados de revisión + approval + activity log** | Estados libres | Aceptada. Máquina de estados (`DRAFT → SENT_FOR_REVIEW → CHANGES_REQUESTED → SENT_FOR_REVIEW → APPROVED → ARCHIVED`); aprobación registra `approvedAt/approvedBy/reviewId`; los comentarios se conservan como historial; log de actividad básico. |
 
 Cada ADR con su detalle en `docs/DECISIONS.md`.
 
@@ -186,7 +229,8 @@ Cada ADR con su detalle en `docs/DECISIONS.md`.
 
 - **Firebase es la fuente de verdad.** Web y CEP solo cache-an localmente.
 - **Todo se anima con segundos** (`version.fps`, `comment.time`); nada de operar con strings de timecode.
-- **El video es de proveedor externo, configurable**, no de Firebase.
+- **El video es un proxy de revisión externo (Drive), ≤ 160 MB**, servido directo; el master no entra en CYBR VIEW.
 - **Sin frameworks en la Web** (Vanilla JS). Sin toolchain obligatoria.
+- **Sin servidor intermedio de video** (Node/Vercel/Cloudflare Worker/transcodificación).
 - **Seguridad por rol:** cliente y editor no tienen los mismos permisos (reglas RTDB).
 - **Estética cyber-brutalista KIRU** con los tokens definidos en `AGENTS.md`.
