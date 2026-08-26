@@ -54,6 +54,7 @@ export default {
 };
 
 async function handleUpload(request, env, url) {
+  if (!env.PROXIES_BUCKET) return err('STORAGE_NOT_ENABLED', 503);
   const name = url.searchParams.get('name') || 'proxy_' + Date.now();
   const ct = request.headers.get('content-type') || '';
   const size = Number(request.headers.get('content-length') || 0);
@@ -76,6 +77,11 @@ async function handleServe(request, env) {
   if (!id) return err('NOT_FOUND', 404);
 
   const rangeHeader = request.headers.get('range') || '';
+
+  // Si NO hay binding R2 (p. ej. el usuario no quiere tarjeta), servimos solo
+  // desde el proxy de Drive (igual que antes). No rompe nada.
+  if (!env.PROXIES_BUCKET) return serveDrive(id, request.method, rangeHeader);
+
   const obj = await env.PROXIES_BUCKET.get(id, { range: rangeHeader });
 
   if (obj && obj.body) {
@@ -93,11 +99,15 @@ async function handleServe(request, env) {
     return new Response(obj.body, { status: 200, headers });
   }
 
-  // Fallback: proxy el id antiguo de Google Drive (videos existentes)
+  // No está en R2: proxea el id tal cual de Google Drive (videos existentes).
+  return serveDrive(id, request.method, rangeHeader);
+}
+
+async function serveDrive(id, method, rangeHeader) {
   const drive = await fetch(
     `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
     {
-      method: request.method,
+      method,
       redirect: 'follow',
       headers: { range: rangeHeader, 'user-agent': 'Mozilla/5.0' },
     },
