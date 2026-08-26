@@ -1,15 +1,20 @@
 /**
- * CYBR VIEW — panel logic (FASE 10).
+ * CYBR VIEW — panel logic (FASE 11).
  * Firebase connection, auth, project/version selection, realtime comments.
- * CSInterface for Premiere bridge (diagnostic buttons kept from Phase 9).
+ * Click comment → seek Premiere + marker sync.
  */
 (function () {
   'use strict';
 
+  var _log = document.getElementById('boot-log');
+  function _b(msg) { _log.textContent += '\n> ' + msg; _log.scrollTop = _log.scrollHeight; }
+
   var fb = window.CYBRFirebase;
   var sync = window.CYBRSync;
+  var bridge = window.CYBRBridge;
 
-  /* --- DOM refs --- */
+  _b('bridge: ' + (bridge && bridge.available() ? 'PREMIERE CONNECTED' : 'STANDALONE'));
+
   var authPanel   = document.getElementById('auth-panel');
   var mainPanel   = document.getElementById('main-panel');
   var authForm    = document.getElementById('auth-form');
@@ -29,37 +34,65 @@
   var btnLogout   = document.getElementById('btn-logout');
 
   /* --- INIT --- */
-  fb.init();
-  var initErr = fb.getInitError();
-  if (initErr) {
-    authError.textContent = 'FIREBASE INIT ERROR: ' + initErr;
-  }
-  fb.initConnection();
-  sync.initAuth();
+  try {
+    fb.init();
+    var initErr = fb.getInitError();
+    if (initErr) { _b('FB INIT ERROR: ' + initErr); authError.textContent = initErr; }
+    else { _b('fb.init(): OK'); }
+  } catch (e) { _b('fb.init() EXCEPTION: ' + e.message); }
 
-  /* --- AUTH --- */
+  try { sync.initConnection(); _b('initConnection(): OK'); } catch (e) { _b('initConn ERR: ' + e); }
+  try { sync.initAuth(); _b('initAuth(): OK'); } catch (e) { _b('initAuth ERR: ' + e); }
+
+  /* --- AUTH FORM --- */
   authForm.addEventListener('submit', function (e) {
     e.preventDefault();
+    var email = authEmail.value.trim();
+    var pass = authPass.value;
+    _b('submit: ' + email);
     authError.textContent = '';
-    sync.signIn(authEmail.value.trim(), authPass.value).catch(function () {
-      authError.textContent = 'INVALID CREDENTIALS';
+    sync.signIn(email, pass).catch(function (err) {
+      _b('signIn ERR: ' + (err.message || err));
+      authError.textContent = err.message || 'AUTH FAILED';
     });
   });
 
-  btnLogout.addEventListener('click', function () {
-    sync.signOut();
-  });
+  btnLogout.addEventListener('click', function () { sync.signOut(); });
 
   /* --- SELECTORS --- */
   selProject.addEventListener('change', function () {
-    var id = selProject.value;
-    if (id) sync.selectProject(id);
+    if (selProject.value) sync.selectProject(selProject.value);
+  });
+  selVersion.addEventListener('change', function () {
+    if (selVersion.value) sync.selectVersion(selVersion.value);
   });
 
-  selVersion.addEventListener('change', function () {
-    var id = selVersion.value;
-    if (id) sync.selectVersion(id);
-  });
+  /* --- SEEK ON COMMENT CLICK --- */
+  function onCommentClick(seconds) {
+    if (!bridge.available()) {
+      _b('Premiere not available — cannot seek');
+      return;
+    }
+    bridge.seekTo(seconds, function (res) {
+      if (res.error) _b('seek ERR: ' + res.error);
+      else _b('seek OK: ' + res.timecode);
+    });
+  }
+
+  /* --- MARKER SYNC --- */
+  var lastSyncedVersion = null;
+  var syncDebounce = null;
+
+  function syncMarkers(comments) {
+    if (!bridge.available()) return;
+    clearTimeout(syncDebounce);
+    syncDebounce = setTimeout(function () {
+      bridge.syncAll(comments, function (res) {
+        if (res.error) _b('marker sync ERR: ' + res.error);
+        else _b('markers: +' + res.created + ' ~' + res.updated + ' -' + res.deleted);
+      });
+    }, 300);
+  }
 
   /* --- RENDER COMMENTS --- */
   function renderComments(comments) {
@@ -72,6 +105,8 @@
       comments.forEach(function (c) {
         var card = document.createElement('div');
         card.className = 'comment-card';
+        card.setAttribute('data-id', c.id);
+        card.setAttribute('data-time', String(c.time || 0));
 
         var tc = document.createElement('div');
         tc.className = 'comment-tc';
@@ -95,15 +130,20 @@
         card.appendChild(tc);
         card.appendChild(meta);
         if (c.body) card.appendChild(body);
+
+        card.addEventListener('click', function () {
+          onCommentClick(c.time || 0);
+        });
+
         commentList.appendChild(card);
       });
     }
     countEl.textContent = String(comments.length).padStart(2, '0');
+    syncMarkers(comments);
   }
 
   /* --- STATE SUBSCRIPTION --- */
   sync.subscribe(function (s) {
-    /* auth */
     if (s.user) {
       authPanel.style.display = 'none';
       mainPanel.style.display = '';
@@ -114,13 +154,11 @@
       sysUser.textContent = '—';
     }
 
-    /* connection */
     connDot.className = 'conn-dot ' + (s.connected ? 'is-online' : 'is-offline');
     sysStatus.textContent = s.connected ? 'CONNECTED' : 'OFFLINE';
     sysStatus.className = 'val ' + (s.connected ? 'status-ok' : 'status-err');
 
-    /* projects */
-    if (s.projects.length && !selProject.options.length || selProject.options.length <= 1) {
+    if (s.projects.length && selProject.options.length <= 1) {
       selProject.innerHTML = '<option value="">— SELECT PROJECT —</option>';
       s.projects.forEach(function (p) {
         var opt = document.createElement('option');
@@ -131,7 +169,6 @@
       });
     }
 
-    /* versions */
     var hasVersions = s.versions.length > 0;
     selVersion.disabled = !hasVersions && !s.selectedProjectId;
     if (s.selectedProjectId && s.versions.length) {
@@ -145,19 +182,16 @@
       });
     }
 
-    /* system */
     var proj = s.projects.find(function (p) { return p.id === s.selectedProjectId; });
     var ver  = s.versions.find(function (v) { return v.id === s.selectedVersionId; });
     sysProject.textContent = proj ? proj.name : '—';
     sysVersion.textContent = ver ? ver.name : '—';
 
-    /* error */
     if (s.error) {
       sysStatus.textContent = s.error.split(':')[0];
       sysStatus.className = 'val status-err';
     }
 
-    /* comments */
     renderComments(s.comments);
   });
 

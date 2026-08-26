@@ -10,8 +10,21 @@
                  script-src 'self' 'unsafe-inline'">
   <title>CYBR VIEW</title>
   <link rel="stylesheet" href="css/panel.css">
+  <style>
+    #boot-log {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #000; color: #1DB954;
+      font: 10px/1.4 Consolas, monospace;
+      padding: 6px 10px;
+      max-height: 100px; overflow-y: auto;
+      z-index: 9999;
+      border-top: 1px solid #262626;
+    }
+  </style>
 </head>
 <body>
+
+  <div id="boot-log">BOOT...</div>
 
   <header class="header">
     <div class="header-row">
@@ -45,7 +58,7 @@
     </section>
 
     <section class="module">
-      <div class="module-label">/03 COMMENTS <span class="count" id="comments-count">00</span></section>
+      <div class="module-label">/03 COMMENTS <span class="count" id="comments-count">00</span></div>
       <div class="comment-list" id="comment-list">
         <div class="empty-state" id="empty-state">NO COMMENTS</div>
       </div>
@@ -64,12 +77,26 @@
 
   </main>
 
+  <script>
+    var _log = document.getElementById('boot-log');
+    function _b(msg) { _log.textContent += '\n> ' + msg; _log.scrollTop = _log.scrollHeight; }
+    _b('scripts starting...');
+  </script>
   <script src="js/vendor/firebase-app-compat.js"></script>
+  <script>_b('firebase-app: ' + (typeof firebase !== 'undefined' ? 'OK' : 'MISSING'));</script>
   <script src="js/vendor/firebase-database-compat.js"></script>
+  <script>_b('firebase-db: ' + (typeof firebase !== 'undefined' && firebase.database ? 'OK' : 'MISSING'));</script>
   <script src="js/vendor/firebase-auth-compat.js"></script>
+  <script>_b('firebase-auth: ' + (typeof firebase !== 'undefined' && firebase.auth ? 'OK' : 'MISSING'));</script>
   <script src="js/firebase.js"></script>
+  <script>_b('CYBRFirebase: ' + (typeof CYBRFirebase !== 'undefined' ? 'OK' : 'MISSING'));</script>
   <script src="js/sync.js"></script>
+  <script>_b('CYBRSync: ' + (typeof CYBRSync !== 'undefined' ? 'OK' : 'MISSING'));</script>
   <script src="js/CSInterface.js"></script>
+  <script>_b('CSInterface: ' + (typeof CSInterface !== 'undefined' ? 'OK' : 'MISSING'));</script>
+  <script src="js/bridge.js"></script>
+  <script>_b('CYBRBridge: ' + (typeof CYBRBridge !== 'undefined' && CYBRBridge.available() ? 'PREMIERE' : 'STANDALONE'));</script>
   <script src="js/main.js"></script>
+  <script>_b('main.js loaded');</script>
 </body>
 </html>

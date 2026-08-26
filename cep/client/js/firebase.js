@@ -30,7 +30,6 @@
       app = firebase.initializeApp(FIREBASE_CONFIG);
       db = app.database();
       auth = app.auth();
-      auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 
       db.ref('.info/connected').on('value', function (snap) {
         connected = snap.val() === true;
