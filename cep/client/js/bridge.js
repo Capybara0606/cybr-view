@@ -68,7 +68,7 @@
     var call = "cybr_updateMarker('" + commentId + "'," + String(seconds) + ",'" + safeText + "')";
     if (!available || !cs) { if (cb) cb({ error: 'Premiere not available' }); return; }
     cs.evalScript(call, function (raw) {
-      try { cb(JSON.parse(raw)); } catch (e) cb({ error: 'Invalid response' }); }
+      try { cb(JSON.parse(raw)); } catch (e) { cb({ error: 'Invalid response' }); }
     });
   }
 
@@ -92,6 +92,33 @@
     evalScript('cybr_getAllMarkers', null, cb);
   }
 
+  /* --- EXPORT PROXY (FASE 13) --- */
+
+  function getActiveSequenceInfo(cb) {
+    evalScript('cybr_getActiveSequenceInfo', null, cb);
+  }
+  function pickOutputFolder(cb) {
+    evalScript('cybr_pickOutputFolder', null, cb);
+  }
+  function findPreset(cb) {
+    evalScript('cybr_findPreset', null, cb);
+  }
+  function exportProxy(presetPath, outputPath, cb) {
+    var safePreset = (presetPath || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var safeOutput = (outputPath || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var call = "cybr_startExport('" + safePreset + "','" + safeOutput + "')";
+    if (!available || !cs) { if (cb) cb({ error: 'Premiere not available' }); return; }
+    cs.evalScript(call, function (raw) {
+      try { cb(JSON.parse(raw)); } catch (e) { cb({ error: 'Invalid response' }); }
+    });
+  }
+  function getExportState(cb) {
+    evalScript('cybr_getExportState', null, cb);
+  }
+  function resetExport(cb) {
+    evalScript('cybr_resetExport', null, cb);
+  }
+
   init();
 
   window.CYBRBridge = {
@@ -104,5 +131,11 @@
     removeMarker: removeMarker,
     syncAll: syncAll,
     getAllMarkers: getAllMarkers,
+    getActiveSequenceInfo: getActiveSequenceInfo,
+    pickOutputFolder: pickOutputFolder,
+    findPreset: findPreset,
+    exportProxy: exportProxy,
+    getExportState: getExportState,
+    resetExport: resetExport,
   };
 })();

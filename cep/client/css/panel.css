@@ -306,3 +306,33 @@ body {
   border-top: var(--border-w) solid var(--border);
 }
 .create-result[hidden] { display: none; }
+
+/* --- export proxy --- */
+.export-bar {
+  height: 6px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  margin-top: 6px;
+  overflow: hidden;
+}
+.export-bar[hidden] { display: none; }
+.export-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--green);
+  transition: width 0.2s;
+}
+.export-out {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: var(--border-w) solid var(--border);
+}
+.export-out[hidden] { display: none; }
+.export-hint {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}

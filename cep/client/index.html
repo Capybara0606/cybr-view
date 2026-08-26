@@ -99,7 +99,33 @@
     </section>
 
     <section class="module">
-      <div class="module-label">/05 SYSTEM</div>
+      <div class="module-label">/05 EXPORT PROXY</div>
+      <div class="create-form" id="export-form">
+        <div class="form-row">
+          <span class="form-label">PRESET //</span>
+          <input type="text" id="export-preset" class="sel" placeholder="Ruta al .epr H.264 (automático)" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="btn-find-preset" type="button">FIND PRESET</button>
+          <button class="btn btn-sm" id="btn-render-proxy" type="button">RENDER PROXY</button>
+        </div>
+        <div class="form-row" style="margin-top:6px;">
+          <span class="form-label">ESTADO //</span>
+          <span class="val" id="export-status">—</span>
+        </div>
+        <div class="export-bar" id="export-bar" hidden>
+          <div class="export-fill" id="export-fill"></div>
+        </div>
+        <div class="export-out" id="export-out" hidden>
+          <span class="form-label">MP4 GUARDADO //</span>
+          <input type="text" id="export-path" class="sel" readonly />
+          <span class="export-hint">Sube este MP4 a Google Drive (cualquiera con el enlace) y pega el enlace en VIDEO URL de /04.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="module">
+      <div class="module-label">/06 SYSTEM</div>
       <div class="row"><span class="key">STATUS //</span><span class="val" id="sys-status">—</span></div>
       <div class="row"><span class="key">USER //</span><span class="val" id="sys-user">—</span></div>
       <div class="row"><span class="key">PROJECT //</span><span class="val" id="sys-project">—</span></div>

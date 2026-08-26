@@ -257,3 +257,136 @@ function findMarkerById(markers, commentId) {
   }
   return null;
 }
+
+/* ============================================================
+   EXPORT PROXY (FASE 13) — render MP4 vía cola AME con progreso
+   ============================================================ */
+
+var _export = { status: 'idle', progress: 0, message: '', error: '', outputPath: '', jobID: '' };
+
+function _ppro_onProgress(jobID, progress) {
+  _export.status = 'rendering';
+  var pct = 0;
+  if (typeof progress === 'object' && progress !== null && progress.percent !== undefined) {
+    pct = Number(progress.percent);
+  } else if (typeof progress === 'number') {
+    pct = Number(progress);
+  }
+  _export.progress = isNaN(pct) ? _export.progress : pct;
+}
+
+function _ppro_onComplete(jobID) {
+  _export.status = 'complete';
+  _export.progress = 100;
+  _export.message = 'RENDER_COMPLETE';
+}
+
+function _ppro_onError(jobID, msg) {
+  _export.status = 'error';
+  _export.error = String(msg || 'RENDER_ERROR');
+}
+
+function cybr_bindEncoder() {
+  if (_export.bound) return;
+  try { app.enableQE(); } catch (e) {}
+  app.encoder.bind('onEncoderJobProgress', _ppro_onProgress);
+  app.encoder.bind('onEncoderJobComplete', _ppro_onComplete);
+  app.encoder.bind('onEncoderJobError', _ppro_onError);
+  _export.bound = true;
+}
+
+function cybr_getActiveSequenceInfo() {
+  try {
+    var seq = getSeq();
+    if (!seq) return JSON.stringify({ error: 'No hay secuencia activa' });
+    var fps = getFps();
+    return JSON.stringify({
+      name: seq.name || '(sin nombre)',
+      fps: fps,
+      duration: (seq.end && seq.end.seconds !== undefined) ? Number(seq.end.seconds) : 0,
+      timecode: formatTC((seq.end && seq.end.seconds !== undefined) ? Number(seq.end.seconds) : 0, fps),
+    });
+  } catch (e) {
+    return JSON.stringify({ error: 'Error al leer secuencia: ' + e.message });
+  }
+}
+
+function cybr_pickOutputFolder() {
+  try {
+    var folder = Folder.selectDialog('Elegir carpeta para el proxy MP4');
+    if (!folder) return JSON.stringify({ ok: false, cancelled: true });
+    return JSON.stringify({ ok: true, path: folder.fsName });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: 'Error al elegir carpeta: ' + e.message });
+  }
+}
+
+function cybr_findPreset() {
+  try {
+    var dirs = [
+      '~/AppData/Roaming/Adobe/Common/AME/10.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/11.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/12.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/14.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/15.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/16.0/Presets',
+      '~/AppData/Roaming/Adobe/Common/AME/17.0/Presets',
+    ];
+    var found = '';
+    var tried = [];
+    for (var d = 0; d < dirs.length; d++) {
+      var folder = new Folder(dirs[d]);
+      tried.push(dirs[d]);
+      if (!folder.exists) continue;
+      var files = folder.getFiles('*.epr');
+      for (var f = 0; f < files.length; f++) {
+        var n = files[f].name.toLowerCase();
+        if (n.indexOf('h264') !== -1 || n.indexOf('h.264') !== -1) {
+          found = files[f].fsName;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    return JSON.stringify({ preset: found, tried: tried });
+  } catch (e) {
+    return JSON.stringify({ preset: '', error: e.message });
+  }
+}
+
+function cybr_startExport(presetPath, outputPath) {
+  try {
+    var seq = getSeq();
+    if (!seq) return JSON.stringify({ error: 'No hay secuencia activa' });
+    if (!presetPath) return JSON.stringify({ error: 'NO_PRESET' });
+    var preset = new File(presetPath);
+    if (!preset.exists) return JSON.stringify({ error: 'PRESET_NOT_FOUND' });
+    if (!outputPath) return JSON.stringify({ error: 'NO_OUTPUT' });
+
+    cybr_bindEncoder();
+    _export.status = 'queued';
+    _export.progress = 0;
+    _export.error = '';
+    _export.message = '';
+    _export.outputPath = outputPath;
+
+    try { app.encoder.launchEncoder(); } catch (e) {}
+
+    var jobID = app.encoder.encodeSequence(seq, outputPath, preset.fsName, app.encoder.ENCODE_ENTIRE, 0);
+    _export.jobID = String(jobID);
+    return JSON.stringify({ ok: true, jobID: String(jobID) });
+  } catch (e) {
+    _export.status = 'error';
+    _export.error = 'Error al exportar: ' + e.message;
+    return JSON.stringify({ error: _export.error });
+  }
+}
+
+function cybr_getExportState() {
+  return JSON.stringify(_export);
+}
+
+function cybr_resetExport() {
+  _export = { status: 'idle', progress: 0, message: '', error: '', outputPath: '', jobID: '' };
+  return JSON.stringify({ ok: true });
+}
