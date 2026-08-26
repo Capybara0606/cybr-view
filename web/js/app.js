@@ -187,10 +187,24 @@ function renderDashboard() {
     b.addEventListener('click', () => { location.hash = `#/review/${b.dataset.open}`; });
   });
   list.querySelectorAll('[data-copy]').forEach((b) => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const url = reviewUrl(b.dataset.copy);
-      if (navigator.clipboard) navigator.clipboard.writeText(url);
-      else window.prompt('Copiar enlace de revisión:', url);
+      let ok = false;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+          ok = true;
+        }
+      } catch {
+        ok = false;
+      }
+      if (!ok) {
+        window.prompt('Copiar enlace de revisión:', url);
+        return;
+      }
+      const prev = b.textContent;
+      b.textContent = 'COPIED';
+      setTimeout(() => { b.textContent = prev; }, 1200);
     });
   });
   list.querySelectorAll('[data-toggle]').forEach((b) => {
