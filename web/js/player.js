@@ -8,6 +8,8 @@ import { formatTime, formatTimecode, formatCode } from './time.js';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
+const MAX_BLOB_BYTES = 500 * 1024 * 1024;
+
 export function createPlayer() {
   const video = document.getElementById('video');
   const player = document.getElementById('player');
@@ -113,11 +115,34 @@ export function createPlayer() {
     return video.currentTime;
   }
   let currentSource = '';
+  let metaTimer = null;
+
+  async function blobFallback(url) {
+    try {
+      const head = await fetch(url, { headers: { range: 'bytes=0-0' } });
+      const len = parseInt((head.headers.get('content-range') || '').split('/')[1] || '0', 10);
+      if (!(len > 0) || len > MAX_BLOB_BYTES) return;
+      const blob = await (await fetch(url)).blob();
+      video.src = URL.createObjectURL(blob);
+      video.load();
+    } catch {
+      /* mantiene el src actual */
+    }
+  }
+
+  function watchForMetadata(url) {
+    clearTimeout(metaTimer);
+    metaTimer = setTimeout(() => {
+      if (video.readyState < 1) blobFallback(url);
+    }, 6000);
+  }
+
   function setSource(url) {
     if (!url || url === currentSource) return;
     currentSource = url;
     video.src = url;
     video.load();
+    watchForMetadata(url);
   }
 
   /* ---------- seek ---------- */
@@ -248,7 +273,7 @@ export function createPlayer() {
   video.addEventListener('timeupdate', () => { renderTime(); renderProgress(); });
   video.addEventListener('durationchange', () => { renderTime(); buildScale(); renderMarkers(markers); });
   video.addEventListener('progress', renderBuffer);
-  video.addEventListener('loadedmetadata', hideFallback);
+  video.addEventListener('loadedmetadata', () => { hideFallback(); clearTimeout(metaTimer); });
   video.addEventListener('canplay', hideFallback);
   video.addEventListener('error', () => showFallback('SRC OFFLINE', 'CHECK SOURCE // CORS OR CODEC'));
   video.addEventListener('volumechange', syncVolumeUI);
