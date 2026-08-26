@@ -36,9 +36,9 @@ export default {
     appId: '1:1088646833360:web:25c7f0a447564c5729aad5',
   },
 
-  // URLs de video. Sustituye por tus URLs reales (Drive-proxy / CDN con Range). 
+  // URLs de video. Sustituye por tus URLs reales (Drive con confirm=t -> Range/CORS OK).
   demo: {
-    videoV01: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    videoV01: 'https://drive.usercontent.google.com/download?id=1nf69dLKCQyTWAJvABIG7HJiOe3JRnAwP&export=download&confirm=t',
     videoV02: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     videoV03: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     videoShorts: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
