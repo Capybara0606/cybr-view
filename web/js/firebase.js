@@ -30,33 +30,43 @@ async function db() {
   return app.database();
 }
 
-function commentsPath(projectId, versionId) {
-  return `cybrview/v1/projects/${projectId}/versions/${versionId}/comments`;
+function commentsPath(token) {
+  return `cybrview/v1/reviews/${token}/comments`;
 }
 
-/** Listener realtime de los comentarios de una versión. Devuelve una función para desuscribir. */
-export async function listenComments(projectId, versionId, callback) {
+function tokenPath(token) {
+  return `cybrview/v1/tokens/${token}`;
+}
+
+/** Listener realtime de los comentarios de una revisión (por token). Devuelve unsubscribe. */
+export async function listenComments(token, callback) {
   const d = await db();
-  const ref = d.ref(commentsPath(projectId, versionId));
+  const ref = d.ref(commentsPath(token));
   const cb = (snap) => callback(snap.val());
   ref.on('value', cb);
   return () => ref.off('value', cb);
 }
 
-export async function createComment(projectId, versionId, comment) {
+export async function createComment(token, comment) {
   const d = await db();
   const { id, ...payload } = comment;
-  await d.ref(commentsPath(projectId, versionId)).child(id).set(payload);
+  await d.ref(commentsPath(token)).child(id).set(payload);
 }
 
-export async function updateComment(projectId, versionId, id, patch) {
+export async function updateComment(token, id, patch) {
   const d = await db();
-  await d.ref(commentsPath(projectId, versionId)).child(id).update(patch);
+  await d.ref(commentsPath(token)).child(id).update(patch);
 }
 
-export async function deleteComment(projectId, versionId, id) {
+export async function deleteComment(token, id) {
   const d = await db();
-  await d.ref(commentsPath(projectId, versionId)).child(id).remove();
+  await d.ref(commentsPath(token)).child(id).remove();
+}
+
+/** Escribe el mapeo del token (para las reglas: tokens/{token}.status). Solo editor (auth). */
+export async function setReviewToken(token, data) {
+  const d = await db();
+  await d.ref(tokenPath(token)).set(data);
 }
 
 /** Estado de conexión del backend (para la UI). */

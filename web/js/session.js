@@ -6,7 +6,7 @@
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
 import { defaultData, load, save, refreshVideoUrls, findByToken } from './data.js';
-import { configured, listenComments, createComment, updateComment, deleteComment, onConnection } from './firebase.js';
+import { configured, listenComments, createComment, updateComment, deleteComment, onConnection, setReviewToken } from './firebase.js';
 import { canTransition } from './status.js';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
@@ -50,7 +50,7 @@ export function createSession() {
     }
     if (useRemote) {
       try {
-        unsub = await listenComments(projectId, v.id, (val) => applyMirror(toComments(val)));
+        unsub = await listenComments(v.accessToken, (val) => applyMirror(toComments(val)));
       } catch {
         applyMirror(localComments());
       }
@@ -93,8 +93,18 @@ export function createSession() {
     }
   }
 
-  function vid() {
-    return currentVersion()?.id;
+  function tok() {
+    return currentVersion()?.accessToken;
+  }
+
+  function syncAllTokens() {
+    if (!useRemote) return;
+    tree.forEach((p) => {
+      (p.versions || []).forEach((v) => {
+        setReviewToken(v.accessToken, { projectId: p.id, versionId: v.id, status: v.accessStatus })
+          .catch(() => {});
+      });
+    });
   }
 
   function resolveToken(token) {
@@ -107,6 +117,9 @@ export function createSession() {
     found.version.accessStatus = status;
     found.version.updatedAt = Date.now();
     persistLocal();
+    if (useRemote) {
+      setReviewToken(token, { projectId: found.project.id, versionId: found.version.id, status }).catch(() => {});
+    }
     return true;
   }
 
@@ -176,6 +189,7 @@ export function createSession() {
     setAccessStatus,
     setReviewStatus,
     approveActive,
+    syncAllTokens,
     onConnection,
 
     /* ---- tienda para el panel de comentarios ---- */
@@ -192,7 +206,7 @@ export function createSession() {
     async add(data) {
       if (useRemote) {
         try {
-          await createComment(projectId, vid(), data);
+          await createComment(tok(), data);
         } catch {
           localMutate((v) => { v.comments = [data, ...v.comments]; });
         }
@@ -208,7 +222,7 @@ export function createSession() {
       const patch = { status, updatedAt: Date.now() };
       if (useRemote) {
         try {
-          await updateComment(projectId, vid(), id, patch);
+          await updateComment(tok(), id, patch);
         } catch {
           localMutate((v) => { v.comments = v.comments.map((c) => (c.id === id ? { ...c, ...patch } : c)); });
         }
@@ -223,7 +237,7 @@ export function createSession() {
     async remove(id) {
       if (useRemote) {
         try {
-          await deleteComment(projectId, vid(), id);
+          await deleteComment(tok(), id);
         } catch {
           localMutate((v) => { v.comments = v.comments.filter((c) => c.id !== id); });
         }

@@ -22,6 +22,7 @@ let player = null;
 let session = null;
 let comments = null;
 let authState = null;
+let tokensSynced = false;
 
 function isTyping(e) {
   return !!e.target.closest('input,textarea,select,button,[contenteditable]');
@@ -252,6 +253,7 @@ function route() {
   if (seg === 'login') { showView('login'); return; }
   if (seg === 'dashboard') {
     if (!authState) { location.hash = '#/login'; return; }
+    if (!tokensSynced) { tokensSynced = true; session.syncAllTokens(); }
     renderDashboard();
     showView('dashboard');
     return;

@@ -56,13 +56,13 @@
 
 ## 6. Estado actual / limitaciones (honestidad)
 
-- El **código** de acceso (router, tokens, revocación, login, dashboard, auth) está implementado
-  y **probable en modo local/DEV** (sin Firebase).
+- El **código** de acceso (router, tokens, revocación, login, dashboard, auth) y el **path de
+  comentarios token-scoped** (`reviews/{token}/comments` + `tokens/{token}`) están implementados
+  y **probados en modo local/DEV** (sin Firebase).
 - **Pendiente de activar en producción** (requiere tu cuenta Firebase, no automatizable aquí):
   1. Habilitar **Email/Password** en Authentication.
   2. Crear el **usuario editor** (Authentication → Users → Add user).
   3. **Desplegar las reglas** (`database.rules.json` → `firebase deploy --only database`).
-  4. Ajustar el path de comentarios al modelo **token-scoped** (`reviews/{token}/comments`).
 - En modo local/DEV (sin config de Firebase) la auth se **simula** y los datos viven en
   `localStorage` (solo para desarrollo). Esto **no** es seguridad real.
 
