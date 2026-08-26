@@ -7,6 +7,26 @@
 
 ---
 
+## [0.6.1] — 2026-08-26
+
+### Fixed (auditoría del video de Drive)
+- **Video bloqueado en el navegador** (`ERR_BLOCKED_BY_RESPONSE.NotSameSite` / `Format error`).
+  Causa raíz: el servidor de descarga de Google añade `Cross-Origin-Resource-Policy: same-site`,
+  `Cross-Origin-Embedder-Policy: require-corp`, `Content-Security-Policy: sandbox` y `Set-Cookie`,
+  que Chrome bloquea al cargar el video desde otro sitio. Fix: el proxy (`deploy/worker/worker.js`)
+  construye cabeceras **limpias** (copia solo `content-range/content-length/last-modified/etag`) y
+  fuerza `cross-origin-resource-policy: cross-origin` + `content-disposition: inline`.
+- **Firebase SDK no cargaba**: las URLs de `esm.sh` eran incorrectas (`/firebase/app@…` → 404).
+  Fix: `https://esm.sh/firebase@10.12.2/app` y `…/database` (verificado 200).
+- **Inestabilidad del Worker (404 intermitente)**: un `wrangler.jsonc` corrupto en una carpeta
+  padre (`Default Project/`) interfería con `wrangler`. Fix: desplegar desde una carpeta limpia
+  con `npx wrangler deploy --config wrangler.toml`.
+
+### Changed
+- `deploy/worker/worker.js`: manejo de `OPTIONS` (preflight CORS) + cabeceras limpias.
+
+---
+
 ## [0.6.0] — 2026-08-25
 
 ### Added

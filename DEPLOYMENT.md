@@ -118,6 +118,13 @@ CYBR VIEW <video>  (play + seek + timecode)
 > a cualquier bucket con Range+CORS (Backblaze B2 / R2 / S3) y apunta `videoUrl` a él.
 > Es la opción más robusta si el ancho de banda/costes de Drive no compensan.
 
+> **Notas de despliegue del Worker (probado):**
+> - Desplegar con `npx wrangler deploy --config wrangler.toml` desde una **carpeta limpia**
+>   (sin un `wrangler.jsonc` en carpetas padre; uno corrupto puede interferir).
+> - El `worker.js` ya fuerza `cross-origin-resource-policy: cross-origin` + `inline` y
+>   elimina las cabeceras de Google (`same-site`, COEP, CSP sandbox, Set-Cookie) que
+>   Chrome bloquea en cross-site.
+
 ## 8. Probar la aplicación
 
 - Abre la URL pública. Cambia de proyecto y de versión (cambian video/estado/comentarios).
