@@ -18,8 +18,8 @@
     <Extension Id="com.kiru.cybrview.panel">
       <DispatchInfo>
         <Resources>
-          <MainPath>./index.html</MainPath>
-          <ScriptPath>./hostscript.jsx</ScriptPath>
+          <MainPath>./client/index.html</MainPath>
+          <ScriptPath>./host/ExtendScript/main.jsx</ScriptPath>
           <CEFCommandLine>
             <Parameter>--allow-file-access-from-files</Parameter>
             <Parameter>--allow-file-access</Parameter>
@@ -33,8 +33,8 @@
           <Menu>CYBR VIEW</Menu>
           <Geometry>
             <Size>
-              <Height>420</Height>
-              <Width>360</Width>
+              <Height>520</Height>
+              <Width>380</Width>
             </Size>
           </Geometry>
           <Icons />

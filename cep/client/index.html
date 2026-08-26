@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' file:; connect-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>CYBR VIEW</title>
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-brand">CYBR_ VIEW <span class="header-tag">// SYSTEM</span></div>
+  </header>
+
+  <main class="panel">
+
+    <section class="module" id="mod-project">
+      <div class="module-label">/01 PROJECT</div>
+      <div class="module-value" id="val-project">—</div>
+      <button class="btn" id="btn-project">GET PROJECT</button>
+    </section>
+
+    <section class="module" id="mod-comments">
+      <div class="module-label">/02 COMMENTS</div>
+      <div class="module-value muted">PROXIMAMENTE</div>
+    </section>
+
+    <section class="module" id="mod-timeline">
+      <div class="module-label">/03 TIMELINE</div>
+      <div class="row">
+        <span class="key">SEQUENCE //</span>
+        <span class="module-value" id="val-sequence">—</span>
+      </div>
+      <div class="row">
+        <span class="key">TIME //</span>
+        <span class="module-value mono" id="val-time">00:00:00:00</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btn-sequence">GET SEQUENCE</button>
+        <button class="btn" id="btn-time">GET TIME</button>
+      </div>
+    </section>
+
+    <section class="module" id="mod-system">
+      <div class="module-label">/04 SYSTEM</div>
+      <div class="row">
+        <span class="key">STATUS //</span>
+        <span class="module-value" id="val-status">STANDBY</span>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/CSInterface.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

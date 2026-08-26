@@ -1,0 +1,135 @@
+/*
+ * CYBR VIEW — panel.css (FASE 9).
+ * Estetica: CYBER BRUTALIST / TECHNICAL EDITORIAL / DIGITAL SYSTEM UI.
+ * Tokens exactos de web/css/tokens.css.
+ */
+
+:root {
+  --bg: #050505;
+  --surface: #0A0A0A;
+  --border: #262626;
+  --green: #1DB954;
+  --text: #F2F2F2;
+  --muted: #8A8A8A;
+  --danger: #FF3B30;
+  --font-ui: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Consolas", "SFMono-Regular", "Roboto Mono", monospace;
+  --border-w: 1px;
+  --radius: 2px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(rgba(138,138,138,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138,138,138,0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+::selection { background: var(--green); color: #000; }
+
+/* --- header --- */
+.header {
+  padding: 12px 16px 10px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+.header-brand {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.header-tag {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* --- panel --- */
+.panel {
+  padding: 8px 0;
+}
+
+/* --- module --- */
+.module {
+  padding: 12px 16px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+.module:last-child { border-bottom: none; }
+
+.module-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.module-value {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.module-value.muted { color: var(--muted); font-style: italic; }
+.module-value.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* --- buttons --- */
+.btn {
+  display: inline-block;
+  margin-top: 8px;
+  margin-right: 6px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--green);
+  border: var(--border-w) solid var(--green);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn:hover {
+  background: var(--green);
+  color: #000;
+}
+.btn:active { opacity: 0.8; }
+
+.btn-row {
+  display: flex;
+  gap: 0;
+}
+
+/* --- status colors --- */
+.status-ok { color: var(--green); }
+.status-err { color: var(--danger); }
+.status-warn { color: #F5A623; }

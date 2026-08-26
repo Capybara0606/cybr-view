@@ -1,0 +1,57 @@
+CYBR VIEW — CEP Panel — Instalacion y Debug
+=============================================
+
+1. REQUISITOS
+   - Adobe Premiere Pro 2020 (v14.0) o superior.
+   - Windows: %APPDATA%\Adobe\CEP\extensions\
+   - Mac: ~/Library/Application Support/Adobe/CEP/extensions/
+
+2. INSTALACION (desarrollo)
+   a) Copiar la carpeta "cep/" completa a:
+      Windows: %APPDATA%\Adobe\CEP\extensions\com.kiru.cybrview
+      Mac: ~/Library/Application Support/Adobe/CEP/extensions/com.kiru.cybrview
+
+   b) Activar PlayerDebugMode (Windows):
+      - Abrir regedit
+      - Navegar a: HKEY_CURRENT_USER\Software\Adobe\CSXS.9
+      - Crear valor DWORD: PlayerDebugMode = 1
+      - Reiniciar Premiere Pro
+
+   c) Activar PlayerDebugMode (Mac):
+      - Abrir Terminal
+      - Ejecutar: defaults write com.adobe.CSXS.9 PlayerDebugMode 1
+      - Reiniciar Premiere Pro
+
+3. ABRIR EL PANEL
+   - En Premiere: Window > Extensions > CYBR VIEW
+
+4. DEPURACION
+   - Los logs de ExtendScript se ven en: Window > Extensions > Developer (si esta disponible)
+   - O usar Extension Builder 3 de Adobe.
+   - El panel CEP es un Chromium Embedded; se puede inspeccionar con:
+     - Windows: Shift+F12 (dentro del panel)
+     - Mac: Cmd+Option+I
+
+5. ESTRUCTURA
+   cep/
+   ├── CSXS/manifest.xml          <- descriptor de la extension
+   ├── client/
+   │   ├── index.html             <- UI del panel
+   │   ├── css/panel.css          <- estilos
+   │   └── js/
+   │       ├── main.js            <- logica del panel
+   │       └── CSInterface.js     <- puente Adobe CEP
+   ├── host/
+   │   └── ExtendScript/
+   │       └── main.jsx           <- funciones Premiere (ES3)
+   └── INSTALL.txt                <- este archivo
+
+6. DESARROLLO
+   - Editar archivos en cep/client/ y cep/host/
+   - Reiniciar el panel (cerrar y abrir desde Window > Extensions)
+   - No requiere build ni compilacion
+
+7. NOTAS
+   - ExtendScript (main.jsx) es ES3: sin let/const, sin arrow functions, sin Promise.
+   - El panel (client/js/main.js) usa ES5/ES6 moderno (CEF lo soporta).
+   - CSInterface.js se descarga de: https://github.com/Adobe-CEP/CEP-Resources
