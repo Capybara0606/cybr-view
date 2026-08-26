@@ -8,7 +8,7 @@
 import { formatCode } from './time.js';
 import { CONFIG } from './config.js';
 
-const KEY = 'cybrview:projects:v2';
+const KEY = 'cybrview:projects:v3';
 const now = () => Date.now();
 
 export function commentSequence() {

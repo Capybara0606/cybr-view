@@ -47,6 +47,16 @@
 - **No probado aquí:** Firebase realtime E2E con dos dispositivos (requiere tu proyecto +
   config) y video Drive de 5 GB (solo vía proxy Worker). Se documenta en `DEPLOYMENT.md`.
 
+### Deployment (realizado)
+- Sitio publicado en https://capybara0606.github.io/cybr-view/ (GitHub Pages, workflow automático).
+- Config de Firebase (proyecto `cybr-view`, RTDB modo test) activada en `config/prod.js`.
+- V01 de MULTIMONEY apunta al render 4K real en Drive vía
+  `drive.usercontent.google.com/download?id=…&export=download&confirm=t` (verificado con probe:
+  `206 Partial`, `video/mp4`, `Access-Control-Allow-Origin: *`, `Accept-Ranges: bytes`).
+- **Solución sin infra adicional:** el enlace directo con `confirm=t` permite `<video>` con
+  play/seek. El proxy `deploy/worker/worker.js` queda como *fallback robusto* por si Drive
+  cambia su comportamiento.
+
 ---
 
 ## [0.5.0] — 2026-08-25
