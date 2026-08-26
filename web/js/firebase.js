@@ -38,6 +38,16 @@ function tokenPath(token) {
   return `cybrview/v1/tokens/${token}`;
 }
 
+const PROJECTS_BASE = 'cybrview/v1/projects';
+
+function projectPath(projectId) {
+  return `${PROJECTS_BASE}/${projectId}`;
+}
+
+function versionPath(projectId, versionId) {
+  return `${PROJECTS_BASE}/${projectId}/versions/${versionId}`;
+}
+
 /** Listener realtime de los comentarios de una revisión (por token). Devuelve unsubscribe. */
 export async function listenComments(token, callback) {
   const d = await db();
@@ -80,6 +90,78 @@ export async function getReviewToken(token) {
 export async function setReviewApproval(token, data) {
   const d = await db();
   await d.ref(`cybrview/v1/reviews/${token}/approval`).set(data);
+}
+
+/* ---------- PROJECTS CRUD ---------- */
+
+export async function createProject(data) {
+  const d = await db();
+  const ref = d.ref(PROJECTS_BASE).push();
+  await ref.set(data);
+  return ref.key;
+}
+
+export async function updateProject(projectId, patch) {
+  const d = await db();
+  await d.ref(projectPath(projectId)).update(patch);
+}
+
+export async function deleteProject(projectId) {
+  const d = await db();
+  await d.ref(projectPath(projectId)).remove();
+}
+
+/** Listener realtime del catálogo de proyectos. Devuelve unsubscribe. */
+export function listenProjects(callback) {
+  if (!configured) { callback(null); return () => {}; }
+  let unsub = null;
+  db().then((d) => {
+    const ref = d.ref(PROJECTS_BASE);
+    const cb = (snap) => callback(snap.val());
+    ref.on('value', cb);
+    unsub = () => ref.off('value', cb);
+  }).catch(() => callback(null));
+  return () => { if (unsub) unsub(); };
+}
+
+/* ---------- VERSIONS CRUD ---------- */
+
+export async function createVersion(projectId, data) {
+  const d = await db();
+  const ref = d.ref(versionPath(projectId)).push();
+  await ref.set(data);
+  return ref.key;
+}
+
+export async function updateVersion(projectId, versionId, patch) {
+  const d = await db();
+  await d.ref(versionPath(projectId, versionId)).update(patch);
+}
+
+export async function deleteVersion(projectId, versionId) {
+  const d = await db();
+  await d.ref(versionPath(projectId, versionId)).remove();
+}
+
+/* ---------- SEED (write demo projects if empty) ---------- */
+
+export async function seedIfEmpty(projects) {
+  const d = await db();
+  const snap = await d.ref(PROJECTS_BASE).once('value');
+  if (snap.val()) return false;
+  const updates = {};
+  projects.forEach((p) => {
+    updates[p.id] = { name: p.name, client: p.client || '', createdAt: p.createdAt, updatedAt: p.updatedAt };
+    (p.versions || []).forEach((v) => {
+      updates[`${p.id}/versions/${v.id}`] = {
+        name: v.name, videoUrl: v.videoUrl, fps: v.fps, status: v.status,
+        accessToken: v.accessToken, accessStatus: v.accessStatus,
+        createdAt: v.createdAt, updatedAt: v.updatedAt,
+      };
+    });
+  });
+  await d.ref(PROJECTS_BASE).set(updates);
+  return true;
 }
 
 /** Estado de conexión del backend (para la UI). */

@@ -235,6 +235,19 @@
           </div>
           <span class="section-id">CYBR_VIEW.module://admin</span>
         </header>
+        <div id="dashboard-actions" class="dashboard-actions">
+          <button class="btn btn-send" id="btn-new-project" type="button">+ NEW PROJECT</button>
+        </div>
+        <div id="new-project-form" class="new-entity-form" hidden>
+          <span class="form-label">PROJECT NAME //</span>
+          <input id="new-project-name" type="text" placeholder="Project name" class="form-input" />
+          <span class="form-label">CLIENT //</span>
+          <input id="new-project-client" type="text" placeholder="Client name (optional)" class="form-input" />
+          <div class="form-actions">
+            <button class="btn btn-ghost" id="cancel-project" type="button">CANCEL</button>
+            <button class="btn btn-send" id="create-project" type="button">CREATE</button>
+          </div>
+        </div>
         <div id="dashboard-list" class="dashboard-list"></div>
       </div>
     </div>

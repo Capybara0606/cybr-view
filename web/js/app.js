@@ -150,13 +150,39 @@ function transitionActions(v) {
   return (map[v.status] || []).filter((t) => canTransition(v.status, t.to));
 }
 
+function wireNewProjectForm() {
+  const btnNew = $('btn-new-project');
+  const form = $('new-project-form');
+  const btnCancel = $('cancel-project');
+  const btnCreate = $('create-project');
+  if (!btnNew || !form) return;
+
+  btnNew.addEventListener('click', () => { form.hidden = false; btnNew.hidden = true; $('new-project-name')?.focus(); });
+  btnCancel?.addEventListener('click', () => { form.hidden = true; btnNew.hidden = false; $('new-project-name').value = ''; $('new-project-client').value = ''; });
+  btnCreate?.addEventListener('click', async () => {
+    const name = $('new-project-name')?.value.trim();
+    if (!name) return;
+    const client = $('new-project-client')?.value.trim() || '';
+    await session.addProject(name, client);
+    form.hidden = true;
+    btnNew.hidden = false;
+    $('new-project-name').value = '';
+    $('new-project-client').value = '';
+  });
+}
+
 function renderDashboard() {
   const list = $('dashboard-list');
   list.innerHTML = '';
+
   session.getProjects().forEach((p) => {
     const head = document.createElement('div');
     head.className = 'dash-project';
-    head.textContent = p.name;
+    head.innerHTML = [
+      `<span class="dash-project-name">${p.name}</span>`,
+      p.client ? `<span class="dash-project-client">${p.client}</span>` : '',
+      `<button class="btn btn-sm" data-add-version="${p.id}" type="button">+ VERSION</button>`,
+    ].join('');
     list.appendChild(head);
 
     (p.versions || []).forEach((v) => {
@@ -175,6 +201,24 @@ function renderDashboard() {
       ].join('');
       list.appendChild(row);
     });
+
+    const addVersionForm = document.createElement('div');
+    addVersionForm.className = 'new-entity-form';
+    addVersionForm.id = `add-version-form-${p.id}`;
+    addVersionForm.hidden = true;
+    addVersionForm.innerHTML = [
+      `<span class="form-label">VERSION NAME //</span>`,
+      `<input type="text" placeholder="V01" class="form-input ver-name" />`,
+      `<span class="form-label">VIDEO URL //</span>`,
+      `<input type="text" placeholder="https://drive.google.com/..." class="form-input ver-url" />`,
+      `<span class="form-label">FPS //</span>`,
+      `<input type="number" value="25" min="1" max="120" class="form-input ver-fps" />`,
+      `<div class="form-actions">`,
+      `<button class="btn btn-ghost ver-cancel" type="button">CANCEL</button>`,
+      `<button class="btn btn-send ver-create" type="button">CREATE</button>`,
+      `</div>`,
+    ].join('');
+    list.appendChild(addVersionForm);
   });
 
   list.querySelectorAll('[data-trans]').forEach((b) => {
@@ -195,13 +239,8 @@ function renderDashboard() {
           await navigator.clipboard.writeText(url);
           ok = true;
         }
-      } catch {
-        ok = false;
-      }
-      if (!ok) {
-        window.prompt('Copiar enlace de revisión:', url);
-        return;
-      }
+      } catch { ok = false; }
+      if (!ok) { window.prompt('Copiar enlace de revisión:', url); return; }
       const prev = b.textContent;
       b.textContent = 'COPIED';
       setTimeout(() => { b.textContent = prev; }, 1200);
@@ -213,6 +252,33 @@ function renderDashboard() {
       const next = found?.version.accessStatus === 'active' ? 'revoked' : 'active';
       session.setAccessStatus(b.dataset.toggle, next);
       renderDashboard();
+    });
+  });
+  list.querySelectorAll('[data-add-version]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const fid = `add-version-form-${b.dataset.addVersion}`;
+      const form = $(fid);
+      if (form) { form.hidden = !form.hidden; form.querySelector('.ver-name')?.focus(); }
+    });
+  });
+  list.querySelectorAll('.ver-cancel').forEach((b) => {
+    b.addEventListener('click', () => { b.closest('.new-entity-form').hidden = true; });
+  });
+  list.querySelectorAll('.ver-create').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const form = b.closest('.new-entity-form');
+      const projectId = form.id.replace('add-version-form-', '');
+      const name = form.querySelector('.ver-name')?.value.trim();
+      if (!name) return;
+      const url = form.querySelector('.ver-url')?.value.trim() || '';
+      const fps = parseInt(form.querySelector('.ver-fps')?.value, 10) || 25;
+      const result = await session.addVersion(projectId, name, url, fps);
+      if (result?.token) {
+        const link = reviewUrl(result.token);
+        if (navigator.clipboard) { navigator.clipboard.writeText(link).catch(() => {}); }
+        alert(`Review link created and copied:\n${link}`);
+      }
+      form.hidden = true;
     });
   });
 }
@@ -291,10 +357,17 @@ wireKeys(comments);
 wireLogin();
 wireNav();
 wireApprove();
+wireNewProjectForm();
 $('btn-logout')?.addEventListener('click', async () => {
   await signOut();
   location.hash = '#/login';
 });
+
+if (session.onProjects) {
+  session.onProjects(() => {
+    if (authState && location.hash.startsWith('#/dashboard')) renderDashboard();
+  });
+}
 
 onAuth((user) => {
   authState = user;

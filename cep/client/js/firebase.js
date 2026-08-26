@@ -1,7 +1,8 @@
 /**
- * CYBR VIEW — Firebase layer for CEP panel (FASE 11).
+ * CYBR VIEW — Firebase layer for CEP panel (FASE 12.1).
  * Uses Firebase compat SDK (gstatic builds in vendor/).
- * Reads projects/versions from tokens path (web writes tokens, not projects).
+ * Projects live at cybrview/v1/projects/{projectId}/versions/{versionId}.
+ * Tokens at cybrview/v1/tokens/{token} (for review links).
  * Comments live at cybrview/v1/reviews/{token}/comments.
  */
 (function () {
@@ -17,13 +18,14 @@
     appId: '1:1088646833360:web:25c7f0a447564c5729aad5',
   };
 
+  var PROJECTS_BASE = 'cybrview/v1/projects';
+  var TOKENS_BASE = 'cybrview/v1/tokens';
+
   var app = null;
   var db = null;
   var auth = null;
   var connected = false;
   var initError = null;
-
-  /* ---------- INIT ---------- */
 
   function init() {
     if (app) return;
@@ -31,7 +33,6 @@
       app = firebase.initializeApp(FIREBASE_CONFIG);
       db = app.database();
       auth = app.auth();
-
       db.ref('.info/connected').on('value', function (snap) {
         connected = snap.val() === true;
         notifyConnection(connected);
@@ -60,102 +61,73 @@
     return auth.onAuthStateChanged(cb);
   }
 
-  function currentUser() {
-    return auth ? auth.currentUser : null;
-  }
+  function currentUser() { return auth ? auth.currentUser : null; }
 
   /* ---------- CONNECTION ---------- */
 
   var connListeners = [];
-
-  function notifyConnection(val) {
-    connListeners.forEach(function (fn) { fn(val); });
-  }
+  function notifyConnection(val) { connListeners.forEach(function (fn) { fn(val); }); }
 
   function onConnection(cb) {
     connListeners.push(cb);
     cb(connected);
-    return function () {
-      connListeners = connListeners.filter(function (fn) { return fn !== cb; });
+    return function () { connListeners = connListeners.filter(function (fn) { return fn !== cb; }); };
+  }
+
+  /* ---------- PROJECTS READ ---------- */
+
+  function listenProjects(cb) {
+    var ref = db.ref(PROJECTS_BASE);
+    var handler = function (snap) {
+      var val = snap.val();
+      if (!val) { cb([]); return; }
+      var projects = Object.keys(val).map(function (pid) {
+        var p = val[pid];
+        var versions = p.versions ? Object.keys(p.versions).map(function (vid) {
+          return Object.assign({ id: vid }, p.versions[vid]);
+        }) : [];
+        return { id: pid, name: p.name || pid, client: p.client || '', versions: versions };
+      });
+      cb(projects);
     };
+    ref.on('value', handler);
+    return function () { ref.off('value', handler); };
   }
 
-  /* ---------- DATA READS (from tokens) ---------- */
+  /* ---------- PROJECTS WRITE ---------- */
 
-  /**
-   * Read all tokens, derive unique projects.
-   * Each token has: { projectId, projectName, versionId, versionName, status, fps, videoUrl, reviewStatus }
-   */
-  function getProjects() {
-    return db.ref('cybrview/v1/tokens').once('value').then(function (snap) {
-      var val = snap.val();
-      if (!val) return [];
-      var seen = {};
-      var projects = [];
-      Object.keys(val).forEach(function (token) {
-        var t = val[token];
-        if (!t || !t.projectId) return;
-        if (seen[t.projectId]) return;
-        seen[t.projectId] = true;
-        projects.push({
-          id: t.projectId,
-          name: t.projectName || t.projectId,
-          client: '',
-          status: 'active',
-        });
-      });
-      return projects;
-    });
+  function createProject(data) {
+    if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
+    var ref = db.ref(PROJECTS_BASE).push();
+    return ref.set(data).then(function () { return ref.key; });
   }
 
-  /**
-   * Read all tokens for a projectId, return unique versions.
-   */
-  function getVersions(projectId) {
-    return db.ref('cybrview/v1/tokens').once('value').then(function (snap) {
-      var val = snap.val();
-      if (!val) return [];
-      var seen = {};
-      var versions = [];
-      Object.keys(val).forEach(function (token) {
-        var t = val[token];
-        if (!t || t.projectId !== projectId) return;
-        if (seen[t.versionId]) return;
-        seen[t.versionId] = true;
-        versions.push({
-          id: t.versionId,
-          name: t.versionName || t.versionId,
-          number: 0,
-          orderCode: '',
-          status: t.reviewStatus || 'draft',
-          fps: t.fps || 25,
-          videoUrl: t.videoUrl || '',
-          token: token,
-        });
-      });
-      return versions;
-    });
+  function updateProject(projectId, patch) {
+    if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
+    return db.ref(PROJECTS_BASE + '/' + projectId).update(patch);
   }
 
-  /**
-   * Find the token for a specific project+version combination.
-   */
-  function findToken(projectId, versionId) {
-    return db.ref('cybrview/v1/tokens').once('value').then(function (snap) {
-      var val = snap.val();
-      if (!val) return null;
-      var best = null;
-      Object.keys(val).forEach(function (token) {
-        var t = val[token];
-        if (t && t.projectId === projectId && t.versionId === versionId) {
-          best = token;
-        }
-      });
-      return best;
-    });
+  /* ---------- VERSIONS WRITE ---------- */
+
+  function createVersion(projectId, data) {
+    if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
+    var ref = db.ref(PROJECTS_BASE + '/' + projectId + '/versions').push();
+    return ref.set(data).then(function () { return ref.key; });
   }
 
-  /* ---------- REALTIME COMMENTS (via reviews/{token}) ---------- */
+  function updateVersion(projectId, versionId, patch) {
+    if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
+    return db.ref(PROJECTS_BASE + '/' + projectId + '/versions/' + versionId).update(patch);
+  }
+
+  /* ---------- TOKENS ---------- */
+
+  function setReviewToken(token, data) {
+    if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
+    return db.ref(TOKENS_BASE + '/' + token).set(data);
+  }
+
+  /* ---------- COMMENTS ---------- */
 
   function listenComments(token, cb) {
     var ref = db.ref('cybrview/v1/reviews/' + token + '/comments');
@@ -170,8 +142,6 @@
     ref.on('value', handler);
     return function () { ref.off('value', handler); };
   }
-
-  /* ---------- WRITE (bidirectional sync) ---------- */
 
   function updateComment(token, commentId, patch) {
     if (!auth || !auth.currentUser) return Promise.reject(new Error('NOT_AUTHENTICATED'));
@@ -188,9 +158,12 @@
     onAuthStateChanged: onAuthStateChanged,
     currentUser: currentUser,
     onConnection: onConnection,
-    getProjects: getProjects,
-    getVersions: getVersions,
-    findToken: findToken,
+    listenProjects: listenProjects,
+    createProject: createProject,
+    updateProject: updateProject,
+    createVersion: createVersion,
+    updateVersion: updateVersion,
+    setReviewToken: setReviewToken,
     listenComments: listenComments,
     updateComment: updateComment,
   };

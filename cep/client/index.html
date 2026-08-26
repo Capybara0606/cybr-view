@@ -65,7 +65,41 @@
     </section>
 
     <section class="module">
-      <div class="module-label">/04 SYSTEM</div>
+      <div class="module-label">/04 CREATE</div>
+      <div class="create-form" id="create-form">
+        <div class="form-row">
+          <span class="form-label">PROJECT //</span>
+          <input type="text" id="create-project-name" class="sel" placeholder="Project name" />
+        </div>
+        <div class="form-row">
+          <span class="form-label">CLIENT //</span>
+          <input type="text" id="create-project-client" class="sel" placeholder="Client (optional)" />
+        </div>
+        <div class="form-row">
+          <span class="form-label">VERSION //</span>
+          <input type="text" id="create-version-name" class="sel" placeholder="V01" />
+        </div>
+        <div class="form-row">
+          <span class="form-label">VIDEO URL //</span>
+          <input type="text" id="create-video-url" class="sel" placeholder="https://..." />
+        </div>
+        <div class="form-row">
+          <span class="form-label">FPS //</span>
+          <input type="number" id="create-fps" class="sel" value="25" min="1" max="120" />
+        </div>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn btn-full" id="btn-create-project" type="button">CREATE PROJECT + VERSION</button>
+        </div>
+        <div class="create-result" id="create-result" hidden>
+          <span class="form-label">REVIEW LINK //</span>
+          <input type="text" id="create-review-link" class="sel" readonly />
+          <button class="btn btn-sm" id="btn-copy-link" type="button" style="margin-top:4px;">COPY</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="module">
+      <div class="module-label">/05 SYSTEM</div>
       <div class="row"><span class="key">STATUS //</span><span class="val" id="sys-status">—</span></div>
       <div class="row"><span class="key">USER //</span><span class="val" id="sys-user">—</span></div>
       <div class="row"><span class="key">PROJECT //</span><span class="val" id="sys-project">—</span></div>

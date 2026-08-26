@@ -1,7 +1,8 @@
 /**
- * CYBR VIEW — sync module for CEP panel (FASE 11).
+ * CYBR VIEW — sync module for CEP panel (FASE 12.1).
  * Manages realtime subscriptions and state for the panel.
- * Reads projects/versions from tokens, comments from reviews/{token}.
+ * Projects/versions from Firebase RTDB (cybrview/v1/projects/).
+ * Comments from reviews/{token}.
  */
 (function () {
   'use strict';
@@ -19,20 +20,19 @@
     connected: false,
     loading: false,
     error: null,
+    lastReviewLink: null,
   };
 
   var subs = [];
+  var projectUnsub = null;
+  var commentsUnsub = null;
 
-  function notify() {
-    subs.forEach(function (fn) { fn(state); });
-  }
+  function notify() { subs.forEach(function (fn) { fn(state); }); }
 
   function subscribe(fn) {
     subs.push(fn);
     fn(state);
-    return function () {
-      subs = subs.filter(function (s) { return s !== fn; });
-    };
+    return function () { subs = subs.filter(function (s) { return s !== fn; }); };
   }
 
   /* ---------- AUTH ---------- */
@@ -43,9 +43,16 @@
         state.user = user;
         state.error = null;
         notify();
-        loadProjects();
+        startProjectListener();
       } else {
         state.user = null;
+        state.projects = [];
+        state.versions = [];
+        state.comments = [];
+        state.selectedProjectId = null;
+        state.selectedVersionId = null;
+        state.selectedToken = null;
+        stopProjectListener();
         notify();
       }
     });
@@ -61,7 +68,7 @@
         state.user = cred.user;
         state.error = null;
         notify();
-        loadProjects();
+        startProjectListener();
       }
     }).catch(function (err) {
       state.loading = false;
@@ -79,48 +86,51 @@
     state.selectedProjectId = null;
     state.selectedVersionId = null;
     state.selectedToken = null;
+    state.lastReviewLink = null;
+    stopProjectListener();
     notify();
     return fb.signOut();
   }
 
-  /* ---------- PROJECTS / VERSIONS ---------- */
+  /* ---------- PROJECTS (realtime from Firebase) ---------- */
 
-  var commentsUnsub = null;
-
-  function loadProjects() {
-    state.loading = true;
-    state.error = null;
-    notify();
-    fb.getProjects().then(function (projects) {
+  function startProjectListener() {
+    if (projectUnsub) return;
+    projectUnsub = fb.listenProjects(function (projects) {
       state.projects = projects;
-      state.loading = false;
-      notify();
-    }).catch(function (err) {
-      state.loading = false;
-      state.error = 'PROJECTS_LOAD_FAILED: ' + (err.message || err.code);
+      if (state.selectedProjectId && !projects.find(function (p) { return p.id === state.selectedProjectId; })) {
+        state.selectedProjectId = null;
+        state.selectedVersionId = null;
+        state.selectedToken = null;
+        state.versions = [];
+        state.comments = [];
+      }
+      if (state.selectedProjectId) {
+        var proj = projects.find(function (p) { return p.id === state.selectedProjectId; });
+        state.versions = proj ? proj.versions : [];
+        if (state.selectedVersionId && !state.versions.find(function (v) { return v.id === state.selectedVersionId; })) {
+          state.selectedVersionId = null;
+          state.selectedToken = null;
+          state.comments = [];
+        }
+      }
       notify();
     });
+  }
+
+  function stopProjectListener() {
+    if (projectUnsub) { projectUnsub(); projectUnsub = null; }
   }
 
   function selectProject(projectId) {
     state.selectedProjectId = projectId;
     state.selectedVersionId = null;
     state.selectedToken = null;
-    state.versions = [];
+    var proj = state.projects.find(function (p) { return p.id === projectId; });
+    state.versions = proj ? proj.versions : [];
     state.comments = [];
-    state.loading = true;
-    state.error = null;
     detachComments();
     notify();
-    fb.getVersions(projectId).then(function (versions) {
-      state.versions = versions;
-      state.loading = false;
-      notify();
-    }).catch(function (err) {
-      state.loading = false;
-      state.error = 'VERSIONS_LOAD_FAILED: ' + (err.message || err.code);
-      notify();
-    });
   }
 
   function selectVersion(versionId) {
@@ -132,25 +142,66 @@
     notify();
 
     var ver = state.versions.find(function (v) { return v.id === versionId; });
-    if (ver && ver.token) {
-      state.selectedToken = ver.token;
-      attachComments(ver.token);
+    if (ver && ver.accessToken) {
+      state.selectedToken = ver.accessToken;
+      attachComments(ver.accessToken);
     } else {
-      fb.findToken(state.selectedProjectId, versionId).then(function (token) {
-        state.selectedToken = token;
-        if (token) {
-          attachComments(token);
-        } else {
-          state.loading = false;
-          state.error = 'NO_TOKEN_FOUND';
-          notify();
-        }
-      }).catch(function (err) {
-        state.loading = false;
-        state.error = 'TOKEN查找失败: ' + (err.message || err.code);
-        notify();
-      });
+      state.loading = false;
+      state.error = 'NO_TOKEN';
+      notify();
     }
+  }
+
+  /* ---------- CREATE PROJECT / VERSION ---------- */
+
+  function generateToken() {
+    var bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+
+  function createProject(name, client) {
+    var now = Date.now();
+    return fb.createProject({ name: name, client: client || '', createdAt: now, updatedAt: now }).then(function (id) {
+      state.selectedProjectId = id;
+      notify();
+      return id;
+    });
+  }
+
+  function createVersion(projectId, name, videoUrl, fps) {
+    var now = Date.now();
+    var token = generateToken();
+    var data = {
+      name: name,
+      videoUrl: videoUrl || '',
+      fps: fps || 25,
+      status: 'DRAFT',
+      accessToken: token,
+      accessStatus: 'active',
+      createdAt: now,
+      updatedAt: now,
+    };
+    return fb.createVersion(projectId, data).then(function (id) {
+      var proj = state.projects.find(function (p) { return p.id === projectId; });
+      return fb.setReviewToken(token, {
+        projectId: projectId,
+        versionId: id,
+        status: 'active',
+        projectName: proj ? proj.name : '',
+        versionName: name,
+        videoUrl: videoUrl || '',
+        fps: fps || 25,
+        reviewStatus: 'DRAFT',
+      }).then(function () {
+        state.selectedProjectId = projectId;
+        state.selectedVersionId = id;
+        state.lastReviewLink = token;
+        notify();
+        attachComments(token);
+        return { id: id, token: token };
+      });
+    });
   }
 
   /* ---------- COMMENTS (REALTIME) ---------- */
@@ -164,19 +215,7 @@
   }
 
   function detachComments() {
-    if (commentsUnsub) {
-      commentsUnsub();
-      commentsUnsub = null;
-    }
-  }
-
-  /* ---------- CONNECTION ---------- */
-
-  function initConnection() {
-    fb.onConnection(function (connected) {
-      state.connected = connected;
-      notify();
-    });
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
   }
 
   /* ---------- BIDIRECTIONAL SYNC ---------- */
@@ -191,6 +230,15 @@
     return fb.updateComment(state.selectedToken, commentId, { status: 'open', updatedAt: Date.now() });
   }
 
+  /* ---------- CONNECTION ---------- */
+
+  function initConnection() {
+    fb.onConnection(function (connected) {
+      state.connected = connected;
+      notify();
+    });
+  }
+
   /* ---------- PUBLIC API ---------- */
 
   window.CYBRSync = {
@@ -202,7 +250,8 @@
     signOut: signOut,
     selectProject: selectProject,
     selectVersion: selectVersion,
-    loadProjects: loadProjects,
+    createProject: createProject,
+    createVersion: createVersion,
     resolveComment: resolveComment,
     reopenComment: reopenComment,
   };

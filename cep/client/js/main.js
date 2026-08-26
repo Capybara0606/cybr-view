@@ -1,6 +1,6 @@
 /**
- * CYBR VIEW — panel logic (FASE 11).
- * Firebase connection, auth, project/version selection, realtime comments.
+ * CYBR VIEW — panel logic (FASE 12.1).
+ * Firebase connection, auth, project/version creation, realtime comments.
  * Click comment → seek Premiere + marker sync.
  */
 (function () {
@@ -93,7 +93,6 @@
   }
 
   /* --- MARKER SYNC --- */
-  var lastSyncedVersion = null;
   var syncDebounce = null;
 
   function syncMarkers(comments) {
@@ -169,6 +168,62 @@
     syncMarkers(comments);
   }
 
+  /* --- CREATE PROJECT + VERSION --- */
+  var btnCreate = document.getElementById('btn-create-project');
+  var createResult = document.getElementById('create-result');
+  var createReviewLink = document.getElementById('create-review-link');
+  var btnCopyLink = document.getElementById('btn-copy-link');
+
+  if (btnCreate) {
+    btnCreate.addEventListener('click', function () {
+      var projectName = document.getElementById('create-project-name').value.trim();
+      var clientName = document.getElementById('create-project-client').value.trim();
+      var versionName = document.getElementById('create-version-name').value.trim();
+      var videoUrl = document.getElementById('create-video-url').value.trim();
+      var fps = parseInt(document.getElementById('create-fps').value, 10) || 25;
+
+      if (!projectName) { _b('CREATE ERR: project name required'); return; }
+      if (!versionName) { _b('CREATE ERR: version name required'); return; }
+
+      _b('creating: ' + projectName + ' / ' + versionName);
+      btnCreate.disabled = true;
+
+      sync.createProject(projectName, clientName).then(function (projectId) {
+        return sync.createVersion(projectId, versionName, videoUrl, fps);
+      }).then(function (result) {
+        btnCreate.disabled = false;
+        var link = location.origin + location.pathname + '#/review/' + result.token;
+        createReviewLink.value = link;
+        createResult.hidden = false;
+        _b('created OK: token=' + result.token.substring(0, 8) + '...');
+
+        document.getElementById('create-project-name').value = '';
+        document.getElementById('create-project-client').value = '';
+        document.getElementById('create-version-name').value = '';
+        document.getElementById('create-video-url').value = '';
+        document.getElementById('create-fps').value = '25';
+      }).catch(function (err) {
+        btnCreate.disabled = false;
+        _b('CREATE ERR: ' + (err.message || err));
+      });
+    });
+  }
+
+  if (btnCopyLink) {
+    btnCopyLink.addEventListener('click', function () {
+      var url = createReviewLink.value;
+      if (!url) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          btnCopyLink.textContent = 'COPIED';
+          setTimeout(function () { btnCopyLink.textContent = 'COPY'; }, 1200);
+        });
+      } else {
+        window.prompt('Copy review link:', url);
+      }
+    });
+  }
+
   /* --- STATE SUBSCRIPTION --- */
   sync.subscribe(function (s) {
     if (s.user) {
@@ -190,10 +245,12 @@
       s.projects.forEach(function (p) {
         var opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = p.name;
+        opt.textContent = p.name + (p.client ? ' (' + p.client + ')' : '');
         if (s.selectedProjectId === p.id) opt.selected = true;
         selProject.appendChild(opt);
       });
+    } else if (!s.projects.length) {
+      selProject.innerHTML = '<option value="">— NO PROJECTS —</option>';
     }
 
     var hasVersions = s.versions.length > 0;
@@ -203,10 +260,12 @@
       s.versions.forEach(function (v) {
         var opt = document.createElement('option');
         opt.value = v.id;
-        opt.textContent = (v.orderCode || v.number || '') + ' ' + v.name + ' [' + v.status + ']';
+        opt.textContent = (v.name || '') + ' [' + (v.status || 'draft') + ']';
         if (s.selectedVersionId === v.id) opt.selected = true;
         selVersion.appendChild(opt);
       });
+    } else if (s.selectedProjectId) {
+      selVersion.innerHTML = '<option value="">— NO VERSIONS —</option>';
     }
 
     var proj = s.projects.find(function (p) { return p.id === s.selectedProjectId; });

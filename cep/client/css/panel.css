@@ -276,3 +276,33 @@ body {
 .status-ok { color: var(--green); }
 .status-err { color: var(--danger); }
 .status-warn { color: var(--warn); }
+
+/* --- create form --- */
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-row .form-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+.form-row .sel {
+  flex: 1;
+}
+.create-result {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: var(--border-w) solid var(--border);
+}
+.create-result[hidden] { display: none; }
