@@ -356,7 +356,6 @@ export function createSession() {
     if (useRemote) {
       const node = await getReviewToken(token).catch(() => null);
       if (!node) return { ok: false, reason: 'invalid' };
-      if (node.status !== 'active') return { ok: false, reason: 'revoked' };
       remoteProject = { id: node.projectId, name: node.projectName };
       remoteVersion = {
         id: node.versionId, name: node.versionName, videoUrl: node.videoUrl,
@@ -371,7 +370,6 @@ export function createSession() {
     }
     const found = findByToken(tree, token);
     if (!found) return { ok: false, reason: 'invalid' };
-    if (found.version.accessStatus !== 'active') return { ok: false, reason: 'revoked' };
     projectId = found.project.id;
     versionId = found.version.id;
     notifySelect();

@@ -10,12 +10,15 @@
         },
         "reviews": {
           "$token": {
-            ".read": "root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'",
-            ".write": "auth != null || root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'",
+            ".read": true,
+            ".write": "root.child('cybrview/v1/tokens').child($token).exists()",
+            "approval": {
+              ".write": "root.child('cybrview/v1/tokens').child($token).exists()"
+            },
             "comments": {
               "$commentId": {
-                ".read": "root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'",
-                ".write": "auth != null || root.child('cybrview/v1/tokens').child($token).child('status').val() == 'active'"
+                ".read": true,
+                ".write": "root.child('cybrview/v1/tokens').child($token).exists()"
               }
             }
           }

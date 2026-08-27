@@ -227,7 +227,6 @@ function renderDashboard() {
         transitionActions(v).map((t) => `<button class="btn btn-ghost" data-trans="${t.to}" data-version="${v.id}" type="button">${t.label}</button>`).join(''),
         `<button class="btn btn-ghost" data-open="${v.accessToken}" type="button">OPEN</button>`,
         `<button class="btn btn-ghost" data-copy="${v.accessToken}" type="button">COPY LINK</button>`,
-        `<button class="btn ${v.accessStatus === 'active' ? 'btn-danger' : 'btn-ghost'}" data-toggle="${v.accessToken}" type="button">${v.accessStatus === 'active' ? 'REVOKE' : 'ACTIVATE'}</button>`,
       ].join('');
       list.appendChild(row);
     });
@@ -274,14 +273,6 @@ function renderDashboard() {
       const prev = b.textContent;
       b.textContent = 'COPIED';
       setTimeout(() => { b.textContent = prev; }, 1200);
-    });
-  });
-  list.querySelectorAll('[data-toggle]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const found = session.resolveToken(b.dataset.toggle);
-      const next = found?.version.accessStatus === 'active' ? 'revoked' : 'active';
-      session.setAccessStatus(b.dataset.toggle, next);
-      renderDashboard();
     });
   });
   list.querySelectorAll('[data-add-version]').forEach((b) => {
