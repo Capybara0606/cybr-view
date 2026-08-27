@@ -118,6 +118,9 @@
   function resetExport(cb) {
     evalScript('cybr_resetExport', null, cb);
   }
+  function encoderStatus(cb) {
+    evalScript('cybr_encoderStatus', null, cb);
+  }
 
   init();
 
@@ -137,5 +140,6 @@
     exportProxy: exportProxy,
     getExportState: getExportState,
     resetExport: resetExport,
+    encoderStatus: encoderStatus,
   };
 })();

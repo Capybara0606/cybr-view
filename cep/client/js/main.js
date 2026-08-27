@@ -268,6 +268,11 @@
   if (btnRender) {
     btnRender.addEventListener('click', function () {
       if (!bridge.available()) { setExportStatus('PREMIERE NOT AVAILABLE', 'status-err'); return; }
+      if (bridge.encoderStatus) {
+        bridge.encoderStatus(function (st) {
+          if (st) _b('encoder: ' + JSON.stringify(st));
+        });
+      }
       bridge.getActiveSequenceInfo(function (seq) {
         if (!seq || seq.error) { setExportStatus('NO SECUENCIA ACTIVA', 'status-err'); _b(seq && seq.error); return; }
         setExportStatus('SELECCIONA CARPETA...');

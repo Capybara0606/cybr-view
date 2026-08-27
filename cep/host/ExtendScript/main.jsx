@@ -299,6 +299,9 @@ function cybr_bindEncoder() {
   if (_export.bound) return;
   if (!app.encoder) { _export.encoderReady = false; return; }
   try { app.enableQE(); } catch (e) {}
+  try { app.encoder.launchEncoder(); } catch (e) {}
+  try { app.encoder.setSidecarXMPEnabled(0); } catch (e) {}
+  try { app.encoder.setEmbeddedXMPEnabled(0); } catch (e) {}
   app.encoder.bind('onEncoderJobProgress', _ppro_onProgress);
   app.encoder.bind('onEncoderJobQueued', _ppro_onQueued);
   app.encoder.bind('onEncoderJobComplete', _ppro_onComplete);
@@ -415,19 +418,39 @@ function cybr_startExport(presetPath, outputPath) {
       return JSON.stringify({ error: _export.error });
     }
 
-    try { app.encoder.launchEncoder(); } catch (e) { _export.message += '; launch: ' + e.message; }
+    // Constante de workArea (ENCODE_ENTIRE = 0). Si no existe en esta versión,
+    // se usa el valor numérico para que AME no descarte el job por undefined.
+    var wa = app.encoder.ENCODE_ENTIRE;
+    if (typeof wa !== 'number') wa = 0;
 
-    var jobID = app.encoder.encodeSequence(seq, outputPath, preset.fsName, app.encoder.ENCODE_ENTIRE, 1);
+    // Normaliza la salida a una ruta real (fsName) para evitar problemas de `\` vs `/`.
+    var outFile = new File(outputPath);
+    var out = outFile && outFile.fsName ? outFile.fsName : outputPath;
+
+    var jobID = app.encoder.encodeSequence(seq, out, preset.fsName, wa, 1);
     _export.jobID = String(jobID);
+    _export.message = 'wa=' + wa;
 
-    // Intenta que la cola de AME arranque automáticamente (si el método existe).
-    try { if (app.encoder.startBatch) app.encoder.startBatch(); } catch (e) {}
-
-    return JSON.stringify({ ok: true, jobID: String(jobID), encoderReady: _export.encoderReady });
+    return JSON.stringify({ ok: true, jobID: String(jobID), encoderReady: _export.encoderReady, workArea: wa });
   } catch (e) {
     _export.status = 'error';
     _export.error = 'Error al exportar: ' + e.message;
     return JSON.stringify({ error: _export.error });
+  }
+}
+
+function cybr_encoderStatus() {
+  try {
+    var out = {
+      hasEncoder: !!(app && app.encoder),
+      hasQe: !!(app && app.enableQE),
+      entire: app.encoder && app.encoder.ENCODE_ENTIRE !== undefined ? app.encoder.ENCODE_ENTIRE : null,
+      workArea: app.encoder && app.encoder.ENCODE_WORKAREA !== undefined ? app.encoder.ENCODE_WORKAREA : null,
+      encoderReady: _export.encoderReady,
+    };
+    return JSON.stringify(out);
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
   }
 }
 
