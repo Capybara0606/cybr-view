@@ -11,7 +11,7 @@ import {
   onConnection, setReviewToken, getReviewToken, setReviewApproval,
   createProject as fbCreateProject, createVersion as fbCreateVersion,
   updateVersion as fbUpdateVersion, updateProject as fbUpdateProject, deleteProject as fbDeleteProject,
-  listenProjects, seedIfEmpty,
+  listenProjects, seedIfEmpty, cleanupBrokenVersions,
 } from './firebase.js?v=20260826';
 import { canTransition } from './status.js?v=20260826';
 
@@ -22,12 +22,28 @@ function snapshotToTree(val) {
   if (!val) return [];
   return Object.keys(val).map((pid) => {
     const p = val[pid];
-    const versions = p.versions ? Object.keys(p.versions).map((vid) => ({
-      ...p.versions[vid],
-      id: vid,
-      name: p.versions[vid].name || vid,
-      comments: p.versions[vid].comments || [],
-    })) : [];
+    const rawVersions = p.versions || {};
+    let versions = [];
+    Object.keys(rawVersions).forEach((vid) => {
+      const vdata = rawVersions[vid];
+      if (vid === 'undefined' && vdata && typeof vdata === 'object') {
+        Object.keys(vdata).forEach((realVid) => {
+          versions.push({
+            ...vdata[realVid],
+            id: realVid,
+            name: vdata[realVid].name || realVid,
+            comments: vdata[realVid].comments || [],
+          });
+        });
+      } else {
+        versions.push({
+          ...vdata,
+          id: vid,
+          name: vdata.name || vid,
+          comments: vdata.comments || [],
+        });
+      }
+    });
     return { id: pid, name: p.name || pid, client: p.client || '', createdAt: p.createdAt, updatedAt: p.updatedAt, versions };
   });
 }
@@ -123,6 +139,7 @@ export function createSession() {
 
   async function ensureSeed() {
     if (!useRemote || seeded) return;
+    await cleanupBrokenVersions();
     const demo = defaultData();
     const wrote = await seedIfEmpty(demo).catch(() => false);
     if (wrote) seeded = true;

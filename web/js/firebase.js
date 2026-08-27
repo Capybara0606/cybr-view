@@ -45,7 +45,8 @@ function projectPath(projectId) {
 }
 
 function versionPath(projectId, versionId) {
-  return `${PROJECTS_BASE}/${projectId}/versions/${versionId}`;
+  if (versionId) return `${PROJECTS_BASE}/${projectId}/versions/${versionId}`;
+  return `${PROJECTS_BASE}/${projectId}/versions`;
 }
 
 /** Listener realtime de los comentarios de una revisión (por token). Devuelve unsubscribe. */
@@ -115,10 +116,21 @@ export async function deleteProject(projectId) {
   if (data && data.versions) {
     const updates = {};
     Object.keys(data.versions).forEach((vid) => {
-      const tok = data.versions[vid] && data.versions[vid].accessToken;
-      if (tok) {
-        updates[`cybrview/v1/tokens/${tok}`] = null;
-        updates[`cybrview/v1/reviews/${tok}`] = null;
+      const vdata = data.versions[vid];
+      if (vid === 'undefined' && vdata && typeof vdata === 'object') {
+        Object.keys(vdata).forEach((realVid) => {
+          const tok = vdata[realVid] && vdata[realVid].accessToken;
+          if (tok) {
+            updates[`cybrview/v1/tokens/${tok}`] = null;
+            updates[`cybrview/v1/reviews/${tok}`] = null;
+          }
+        });
+      } else {
+        const tok = vdata && vdata.accessToken;
+        if (tok) {
+          updates[`cybrview/v1/tokens/${tok}`] = null;
+          updates[`cybrview/v1/reviews/${tok}`] = null;
+        }
       }
     });
     if (Object.keys(updates).length) await d.ref().update(updates);
@@ -186,6 +198,43 @@ export async function seedIfEmpty(projects) {
   const keys = Object.keys(commentWrites);
   if (keys.length) await d.ref().update(commentWrites);
   return true;
+}
+
+/* ---------- CLEANUP: fix versions/undefined/{pushKey} → versions/{pushKey} ---------- */
+
+let _cleaned = false;
+
+export async function cleanupBrokenVersions() {
+  if (_cleaned) return false;
+  _cleaned = true;
+  try {
+    const d = await db();
+    const snap = await d.ref(PROJECTS_BASE).once('value');
+    const projects = snap.val();
+    if (!projects) return false;
+    const updates = {};
+    let broken = false;
+    Object.keys(projects).forEach((pid) => {
+      const p = projects[pid];
+      if (!p || !p.versions) return;
+      const vers = p.versions;
+      if (!vers['undefined']) return;
+      broken = true;
+      const nested = vers['undefined'];
+      Object.keys(nested).forEach((realVid) => {
+        updates[`${PROJECTS_BASE}/${pid}/versions/${realVid}`] = nested[realVid];
+      });
+      updates[`${PROJECTS_BASE}/${pid}/versions/undefined`] = null;
+    });
+    if (!broken) return false;
+    await d.ref().update(updates);
+    console.warn('[CYBR] cleanupBrokenVersions: fixed broken version paths');
+    return true;
+  } catch (err) {
+    console.error('[CYBR] cleanupBrokenVersions FAILED', err);
+    _cleaned = false;
+    return false;
+  }
 }
 
 /** Estado de conexión del backend (para la UI). */

@@ -83,9 +83,19 @@
       if (!val) { cb([]); return; }
       var projects = Object.keys(val).map(function (pid) {
         var p = val[pid];
-        var versions = p.versions ? Object.keys(p.versions).map(function (vid) {
-          return Object.assign({ id: vid, name: p.versions[vid].name || vid }, p.versions[vid]);
-        }) : [];
+        var versions = [];
+        if (p.versions) {
+          Object.keys(p.versions).forEach(function (vid) {
+            var vdata = p.versions[vid];
+            if (vid === 'undefined' && vdata && typeof vdata === 'object') {
+              Object.keys(vdata).forEach(function (realVid) {
+                versions.push(Object.assign({ id: realVid, name: vdata[realVid].name || realVid }, vdata[realVid]));
+              });
+            } else {
+              versions.push(Object.assign({ id: vid, name: vdata.name || vid }, vdata));
+            }
+          });
+        }
         return { id: pid, name: p.name || pid, client: p.client || '', versions: versions };
       });
       cb(projects);
