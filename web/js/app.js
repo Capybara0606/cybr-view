@@ -24,6 +24,7 @@ let session = null;
 let comments = null;
 let authState = null;
 let tokensSynced = false;
+let currentReviewProjectId = null;
 
 function isTyping(e) {
   return !!e.target.closest('input,textarea,select,button,[contenteditable]');
@@ -115,7 +116,29 @@ async function openClientReview(token) {
   const res = await session.openReview(token);
   if (!res.ok) return showDenied(res.reason);
 
+  currentReviewProjectId = res.project.id;
+  const ra = $('review-actions');
+  if (ra) ra.hidden = !authState;
   applyMeta(res.project, res.version);
+}
+
+/* ---------- eliminar proyecto desde la vista de review (editor) ---------- */
+function wireReviewDelete() {
+  const btn = $('btn-delete-project-review');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const pid = currentReviewProjectId;
+    if (!pid || !session.deleteProject) return;
+    const name = session.getProjects().find((p) => p.id === pid)?.name || 'este proyecto';
+    if (!window.confirm(`¿Eliminar el proyecto "${name}"?\nSe borrarán sus versiones, enlaces de revisión y comentarios.`)) return;
+    try {
+      await session.deleteProject(pid);
+      location.hash = '#/dashboard';
+    } catch (e) {
+      console.error('deleteProject failed', e);
+      alert('// ERROR AL ELIMINAR\n' + (e?.message || e));
+    }
+  });
 }
 
 /* ---------- dashboard (editor) ---------- */
@@ -360,7 +383,7 @@ function route() {
   if (seg === 'dashboard') {
     if (!authState) { location.hash = '#/login'; return; }
     if (!tokensSynced) { tokensSynced = true; session.syncAllTokens(); }
-    renderDashboard();
+    try { renderDashboard(); } catch (e) { console.error('renderDashboard', e); }
     showView('dashboard');
     return;
   }
@@ -384,6 +407,7 @@ wireLogin();
 wireNav();
 wireApprove();
 wireNewProjectForm();
+wireReviewDelete();
 $('btn-logout')?.addEventListener('click', async () => {
   await signOut();
   location.hash = '#/login';

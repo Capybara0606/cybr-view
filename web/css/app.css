@@ -1427,6 +1427,13 @@ button {
   background: var(--surface);
 }
 
+.review-actions {
+  margin: 12px 0 0;
+  display: flex;
+  justify-content: flex-end;
+}
+.review-actions[hidden] { display: none; }
+
 .approve-bar[hidden] {
   display: none;
 }
