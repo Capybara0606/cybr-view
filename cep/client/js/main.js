@@ -251,7 +251,7 @@
       s.projects.forEach(function (p) {
         var opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = p.name + (p.client ? ' (' + p.client + ')' : '');
+        opt.textContent = (p.name || p.id) + (p.client ? ' (' + p.client + ')' : '');
         if (s.selectedProjectId === p.id) opt.selected = true;
         selProject.appendChild(opt);
       });
@@ -278,8 +278,8 @@
 
     var proj = s.projects.find(function (p) { return p.id === s.selectedProjectId; });
     var ver  = s.versions.find(function (v) { return v.id === s.selectedVersionId; });
-    sysProject.textContent = proj ? proj.name : '—';
-    sysVersion.textContent = ver ? ver.name : '—';
+    sysProject.textContent = proj ? (proj.name || proj.id) : '—';
+    sysVersion.textContent = ver ? (ver.name || ver.id) : '—';
 
     if (s.error) {
       sysStatus.textContent = s.error.split(':')[0];

@@ -84,7 +84,7 @@
       var projects = Object.keys(val).map(function (pid) {
         var p = val[pid];
         var versions = p.versions ? Object.keys(p.versions).map(function (vid) {
-          return Object.assign({ id: vid }, p.versions[vid]);
+          return Object.assign({ id: vid, name: p.versions[vid].name || vid }, p.versions[vid]);
         }) : [];
         return { id: pid, name: p.name || pid, client: p.client || '', versions: versions };
       });

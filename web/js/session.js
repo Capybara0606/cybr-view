@@ -25,6 +25,7 @@ function snapshotToTree(val) {
     const versions = p.versions ? Object.keys(p.versions).map((vid) => ({
       ...p.versions[vid],
       id: vid,
+      name: p.versions[vid].name || vid,
       comments: p.versions[vid].comments || [],
     })) : [];
     return { id: pid, name: p.name || pid, client: p.client || '', createdAt: p.createdAt, updatedAt: p.updatedAt, versions };

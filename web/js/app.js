@@ -208,7 +208,7 @@ function renderDashboard() {
     const head = document.createElement('div');
     head.className = 'dash-project';
     head.innerHTML = [
-      `<span class="dash-project-name">${p.name}</span>`,
+      `<span class="dash-project-name">${p.name || '—'}</span>`,
       p.client ? `<span class="dash-project-client">${p.client}</span>` : '',
       `<button class="btn btn-sm" data-add-version="${p.id}" type="button">+ VERSION</button>`,
       `<button class="btn btn-sm btn-danger" data-delete-project="${p.id}" type="button">DELETE</button>`,
@@ -220,7 +220,7 @@ function renderDashboard() {
       const row = document.createElement('div');
       row.className = 'dash-row';
       row.innerHTML = [
-        `<span class="dash-ver">${v.name}</span>`,
+        `<span class="dash-ver">${v.name || '—'}</span>`,
         `<span class="dash-status dash-rs">${v.status}</span>`,
         `<span class="dash-counts">OPEN // ${String(counts.open).padStart(2, '0')} · RESOLVED // ${String(counts.resolved).padStart(2, '0')}</span>`,
         `<span class="dash-last">LAST // ${lastActivity(v)}</span>`,
