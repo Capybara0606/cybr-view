@@ -10,7 +10,7 @@ import {
   listenComments, createComment, updateComment, deleteComment,
   onConnection, setReviewToken, getReviewToken, setReviewApproval,
   createProject as fbCreateProject, createVersion as fbCreateVersion,
-  updateVersion as fbUpdateVersion, updateProject as fbUpdateProject,
+  updateVersion as fbUpdateVersion, updateProject as fbUpdateProject, deleteProject as fbDeleteProject,
   listenProjects, seedIfEmpty,
 } from './firebase.js';
 import { canTransition } from './status.js';
@@ -281,6 +281,23 @@ export function createSession() {
     notifyProjects();
   }
 
+  async function deleteProject(projectIdRef) {
+    if (useRemote) {
+      await fbDeleteProject(projectIdRef);
+    } else {
+      tree = tree.filter((x) => x.id !== projectIdRef);
+      persistLocal();
+    }
+    if (projectId === projectIdRef) {
+      projectId = tree[0]?.id || null;
+      versionId = tree[0]?.versions[0]?.id || null;
+      remoteProject = null;
+      remoteVersion = null;
+    }
+    notifyProjects();
+    notifySelect();
+  }
+
   /* ---------- review status ---------- */
 
   function logActivity(version, type, extra = {}) {
@@ -389,6 +406,7 @@ export function createSession() {
     addVersion,
     editProject,
     editVersion,
+    deleteProject,
 
     get: () => mirror,
     count: () => mirror.length,

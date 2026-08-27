@@ -108,7 +108,21 @@ export async function updateProject(projectId, patch) {
 
 export async function deleteProject(projectId) {
   const d = await db();
-  await d.ref(projectPath(projectId)).remove();
+  const ref = d.ref(projectPath(projectId));
+  const snap = await ref.once('value');
+  const data = snap.val();
+  await ref.remove();
+  if (data && data.versions) {
+    const updates = {};
+    Object.keys(data.versions).forEach((vid) => {
+      const tok = data.versions[vid] && data.versions[vid].accessToken;
+      if (tok) {
+        updates[`cybrview/v1/tokens/${tok}`] = null;
+        updates[`cybrview/v1/reviews/${tok}`] = null;
+      }
+    });
+    if (Object.keys(updates).length) await d.ref().update(updates);
+  }
 }
 
 /** Listener realtime del catálogo de proyectos. Devuelve unsubscribe. */

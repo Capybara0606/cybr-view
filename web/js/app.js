@@ -187,6 +187,7 @@ function renderDashboard() {
       `<span class="dash-project-name">${p.name}</span>`,
       p.client ? `<span class="dash-project-client">${p.client}</span>` : '',
       `<button class="btn btn-sm" data-add-version="${p.id}" type="button">+ VERSION</button>`,
+      `<button class="btn btn-sm btn-danger" data-delete-project="${p.id}" type="button">DELETE</button>`,
     ].join('');
     list.appendChild(head);
 
@@ -264,6 +265,20 @@ function renderDashboard() {
       const fid = `add-version-form-${b.dataset.addVersion}`;
       const form = $(fid);
       if (form) { form.hidden = !form.hidden; form.querySelector('.ver-name')?.focus(); }
+    });
+  });
+  list.querySelectorAll('[data-delete-project]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const pid = b.dataset.deleteProject;
+      const name = session.getProjects().find((p) => p.id === pid)?.name || 'este proyecto';
+      if (!window.confirm(`¿Eliminar el proyecto "${name}"?\nSe borrarán sus versiones, enlaces de revisión y comentarios.`)) return;
+      try {
+        await session.deleteProject(pid);
+        renderDashboard();
+      } catch (e) {
+        console.error('deleteProject failed', e);
+        alert('// ERROR AL ELIMINAR\n' + (e?.message || e));
+      }
     });
   });
   list.querySelectorAll('.ver-cancel').forEach((b) => {
