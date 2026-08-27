@@ -228,11 +228,16 @@ export function createSession() {
     };
     if (useRemote) {
       const id = await fbCreateVersion(projectIdRef, data);
-      await setReviewToken(token, {
-        projectId: projectIdRef, versionId: id, status: 'active',
-        projectName: (tree.find((p) => p.id === projectIdRef) || {}).name || '',
-        versionName: name, videoUrl: vidUrl, fps: fps || 25, reviewStatus: 'DRAFT',
-      }).catch(() => {});
+      const projName = (tree.find((p) => p.id === projectIdRef) || {}).name || '';
+      try {
+        await setReviewToken(token, {
+          projectId: projectIdRef, versionId: id, status: 'active',
+          projectName: projName, versionName: name, videoUrl: vidUrl, fps: fps || 25, reviewStatus: 'DRAFT',
+        });
+      } catch (err) {
+        console.error('[CYBR] setReviewToken FAILED', err);
+        throw new Error('No se pudo registrar el enlace de revisión (token). Intenta de nuevo.');
+      }
       const p = tree.find((x) => x.id === projectIdRef);
       if (p && !p.versions.find((x) => x.id === id)) {
         p.versions.push({ ...data, id, comments: [] });
