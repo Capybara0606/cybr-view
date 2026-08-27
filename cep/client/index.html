@@ -99,28 +99,13 @@
     </section>
 
     <section class="module">
-      <div class="module-label">/05 EXPORT PROXY</div>
-      <div class="create-form" id="export-form">
-        <div class="form-row">
-          <span class="form-label">PRESET //</span>
-          <input type="text" id="export-preset" class="sel" placeholder="Ruta al .epr H.264 (automático)" />
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-sm" id="btn-find-preset" type="button">FIND PRESET</button>
-          <button class="btn btn-sm" id="btn-render-proxy" type="button">RENDER PROXY</button>
-        </div>
-        <div class="form-row" style="margin-top:6px;">
-          <span class="form-label">ESTADO //</span>
-          <span class="val" id="export-status">—</span>
-        </div>
-        <div class="export-bar" id="export-bar" hidden>
-          <div class="export-fill" id="export-fill"></div>
-        </div>
-        <div class="export-out" id="export-out" hidden>
-          <span class="form-label">MP4 GUARDADO //</span>
-          <input type="text" id="export-path" class="sel" readonly />
-          <span class="export-hint">Sube este MP4 a Google Drive (cualquiera con el enlace) y pega el enlace en VIDEO URL de /04.</span>
-        </div>
+      <div class="module-label">/05 GUÍA / EXPORTAR PROXY</div>
+      <div class="guide" id="export-guide">
+        <div class="guide-step"><span class="guide-n">01</span> En Premiere: <b>File → Export → Media</b> (Cmd+M) o Media Encoder</div>
+        <div class="guide-step"><span class="guide-n">02</span> Preset: <b>CYBR_PROXY_720p</b> (H.264) → <b>Export</b></div>
+        <div class="guide-step"><span class="guide-n">03</span> <b>Realidad:</b> con 20–25 min en ≤160MB el MP4 sale a ~0.75 Mbps → usa 720p, no 1080p</div>
+        <div class="guide-step"><span class="guide-n">04</span> Sube el MP4 a <b>Google Drive</b> → <b>Compartir</b> → <b>Cualquiera con el enlace</b></div>
+        <div class="guide-step"><span class="guide-n">05</span> Pega el enlace de Drive en <b>VIDEO URL</b> de /04 → <b>CREATE</b></div>
       </div>
     </section>
 

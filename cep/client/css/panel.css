@@ -336,3 +336,21 @@ body {
   margin-top: 4px;
   line-height: 1.4;
 }
+
+/* --- guía manual --- */
+.guide { display: flex; flex-direction: column; gap: 8px; }
+.guide-step {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.guide-n {
+  color: var(--green);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.guide-step b { color: var(--green); font-weight: 600; }
