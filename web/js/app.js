@@ -101,6 +101,7 @@ function showDenied(reason) {
     : '// este enlace de revisión no es válido';
   $('selector-stack').hidden = true;
   document.querySelector('#view-review .review-grid').style.display = 'none';
+  console.error('[CYBR] review denied, reason:', reason, 'hash:', location.hash);
 }
 
 /* ---------- flujo cliente (review por token) ---------- */
