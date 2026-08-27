@@ -4,7 +4,7 @@
  * Comentarios: Firebase RTDB (realtime) si está configurado; localStorage si no.
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
-import { defaultData, load, save, refreshVideoUrls, findByToken, generateToken } from './data.js';
+import { defaultData, load, save, refreshVideoUrls, findByToken, generateToken, normalizeVideoUrl } from './data.js';
 import {
   configured,
   listenComments, createComment, updateComment, deleteComment,
@@ -218,8 +218,9 @@ export function createSession() {
   async function addVersion(projectIdRef, name, videoUrl, fps) {
     const now = Date.now();
     const token = generateToken();
+    const vidUrl = normalizeVideoUrl(videoUrl || '');
     const data = {
-      name, videoUrl: videoUrl || '', fps: fps || 25, status: 'DRAFT',
+      name, videoUrl: vidUrl, fps: fps || 25, status: 'DRAFT',
       accessToken: token, accessStatus: 'active',
       createdAt: now, updatedAt: now, comments: [], activity: [],
       approvedAt: null, approvedBy: null,
@@ -229,7 +230,7 @@ export function createSession() {
       await setReviewToken(token, {
         projectId: projectIdRef, versionId: id, status: 'active',
         projectName: (tree.find((p) => p.id === projectIdRef) || {}).name || '',
-        versionName: name, videoUrl: videoUrl || '', fps: fps || 25, reviewStatus: 'DRAFT',
+        versionName: name, videoUrl: vidUrl, fps: fps || 25, reviewStatus: 'DRAFT',
       }).catch(() => {});
       const p = tree.find((x) => x.id === projectIdRef);
       if (p && !p.versions.find((x) => x.id === id)) {

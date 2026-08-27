@@ -10,6 +10,7 @@ import { CONFIG } from './config.js';
 import { configured } from './firebase.js';
 import { signIn, signOut, onAuth } from './auth.js';
 import { canTransition } from './status.js';
+import { normalizeVideoUrl } from './data.js';
 
 const setText = (sel, val) => {
   const el = document.querySelector(sel);
@@ -77,7 +78,7 @@ function applyMeta(project, version) {
   setText('#project-value', project?.name || '—');
   setText('#version-value', version?.name || '—');
   setText('#status-value', version?.status || '—');
-  player.setSource(version?.videoUrl);
+  player.setSource(normalizeVideoUrl(version?.videoUrl));
 
   // barra de aprobación (cliente): solo si la review está SENT_FOR_REVIEW
   const bar = $('approve-bar');

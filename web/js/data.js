@@ -11,6 +11,24 @@ import { CONFIG } from './config.js';
 const KEY = 'cybrview:projects:v4';
 const now = () => Date.now();
 
+/** Base del worker proxy de video (arregla CORS de Google Drive para playback inline). */
+export const VIDEO_PROXY_BASE = 'https://cybr-view-proxy.j-anibal640-0.workers.dev';
+
+/**
+ * Convierte un enlace de Google Drive a la URL del worker proxy para que el
+ * <video> reproduzca inline (Drive bloquea cross-origin por CORS/CORP).
+ * Si no es un enlace de Drive, devuelve la URL tal cual.
+ */
+export function normalizeVideoUrl(url) {
+  if (!url) return url;
+  if (!/drive\.google\.com/i.test(url)) return url;
+  let id = '';
+  const m = url.match(/\/file\/d\/([\w-]+)/) || url.match(/[?&]id=([\w-]+)/) || url.match(/\/open\?id=([\w-]+)/);
+  if (m) id = m[1];
+  if (!id) return url;
+  return `${VIDEO_PROXY_BASE}/${id}`;
+}
+
 export function commentSequence() {
   let n = 100;
   return () => `comment_${String(++n).padStart(3, '0')}`;
