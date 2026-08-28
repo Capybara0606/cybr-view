@@ -3,14 +3,14 @@
  * Rutas (hash): #/login · #/dashboard (solo editor autenticado) · #/review/:token (cliente).
  * El cliente NO necesita cuenta; accede por un review token. El editor usa Firebase Auth.
  */
-import { createPlayer } from './player.js?v=20260827';
-import { createSession } from './session.js?v=20260827';
-import { createComments } from './comments.js?v=20260827';
-import { CONFIG } from './config.js?v=20260827';
-import { configured } from './firebase.js?v=20260827';
-import { signIn, signOut, onAuth } from './auth.js?v=20260827';
-import { canTransition } from './status.js?v=20260827';
-import { normalizeVideoUrl } from './data.js?v=20260827';
+import { createPlayer } from './player.js?v=20260827b';
+import { createSession } from './session.js?v=20260827b';
+import { createComments } from './comments.js?v=20260827b';
+import { CONFIG } from './config.js?v=20260827b';
+import { configured } from './firebase.js?v=20260827b';
+import { signIn, signOut, onAuth } from './auth.js?v=20260827b';
+import { canTransition } from './status.js?v=20260827b';
+import { normalizeVideoUrl } from './data.js?v=20260827b';
 
 const setText = (sel, val) => {
   const el = document.querySelector(sel);
@@ -95,17 +95,37 @@ function applyMeta(project, version) {
   if (dlBar && dlBtn) {
     const rawUrl = version?.videoUrl || '';
     const proxyUrl = normalizeVideoUrl(rawUrl);
-    console.log('[CYBR] download check:', { rawUrl, proxyUrl, hasVideoUrl: Boolean(proxyUrl) });
     if (proxyUrl) {
-      const name = proxyUrl.split('/').pop() || 'video';
       const safeName = `${project?.name || 'video'}_${version?.name || ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-      dlBtn.href = proxyUrl;
+      dlBtn.href = '#';
       dlBtn.download = `${safeName}.mp4`;
+      dlBtn.onclick = async (e) => {
+        e.preventDefault();
+        const prev = dlBtn.textContent;
+        dlBtn.textContent = 'DESCARGANDO...';
+        dlBtn.disabled = true;
+        try {
+          const res = await fetch(proxyUrl);
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = `${safeName}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+          console.error('[CYBR] download failed', err);
+          window.open(proxyUrl, '_blank');
+        } finally {
+          dlBtn.textContent = prev;
+          dlBtn.disabled = false;
+        }
+      };
       dlBar.hidden = false;
-      console.log('[CYBR] download bar shown');
     } else {
       dlBar.hidden = true;
-      console.log('[CYBR] download bar hidden (no videoUrl)');
     }
   }
 }

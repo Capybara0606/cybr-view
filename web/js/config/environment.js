@@ -2,8 +2,8 @@
  * CYBR VIEW — resolución de entorno (FASE 5.5).
  * Selecciona dev o prod. Por defecto PROD; dev vía  ?env=dev
  */
-import dev from './dev.js?v=20260827';
-import prod from './prod.js?v=20260827';
+import dev from './dev.js?v=20260827b';
+import prod from './prod.js?v=20260827b';
 
 const envs = { dev, prod };
 
