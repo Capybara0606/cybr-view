@@ -5,8 +5,8 @@
  * y el fallback local. Los videos NO se guardan en el repo ni en Firebase:
  * videoUrl apunta a una fuente externa (configurada en config/).
  */
-import { formatCode } from './time.js?v=20260826';
-import { CONFIG } from './config.js?v=20260826';
+import { formatCode } from './time.js?v=20260827';
+import { CONFIG } from './config.js?v=20260827';
 
 const KEY = 'cybrview:projects:v4';
 const now = () => Date.now();

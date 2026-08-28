@@ -3,14 +3,14 @@
  * Rutas (hash): #/login · #/dashboard (solo editor autenticado) · #/review/:token (cliente).
  * El cliente NO necesita cuenta; accede por un review token. El editor usa Firebase Auth.
  */
-import { createPlayer } from './player.js?v=20260826';
-import { createSession } from './session.js?v=20260826';
-import { createComments } from './comments.js?v=20260826';
-import { CONFIG } from './config.js?v=20260826';
-import { configured } from './firebase.js?v=20260826';
-import { signIn, signOut, onAuth } from './auth.js?v=20260826';
-import { canTransition } from './status.js?v=20260826';
-import { normalizeVideoUrl } from './data.js?v=20260826';
+import { createPlayer } from './player.js?v=20260827';
+import { createSession } from './session.js?v=20260827';
+import { createComments } from './comments.js?v=20260827';
+import { CONFIG } from './config.js?v=20260827';
+import { configured } from './firebase.js?v=20260827';
+import { signIn, signOut, onAuth } from './auth.js?v=20260827';
+import { canTransition } from './status.js?v=20260827';
+import { normalizeVideoUrl } from './data.js?v=20260827';
 
 const setText = (sel, val) => {
   const el = document.querySelector(sel);
@@ -95,14 +95,17 @@ function applyMeta(project, version) {
   if (dlBar && dlBtn) {
     const rawUrl = version?.videoUrl || '';
     const proxyUrl = normalizeVideoUrl(rawUrl);
+    console.log('[CYBR] download check:', { rawUrl, proxyUrl, hasVideoUrl: Boolean(proxyUrl) });
     if (proxyUrl) {
-      const ext = (proxyUrl.split('.').pop().split('?')[0] || 'mp4').slice(0, 4);
+      const name = proxyUrl.split('/').pop() || 'video';
       const safeName = `${project?.name || 'video'}_${version?.name || ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
       dlBtn.href = proxyUrl;
-      dlBtn.download = `${safeName}.${ext}`;
+      dlBtn.download = `${safeName}.mp4`;
       dlBar.hidden = false;
+      console.log('[CYBR] download bar shown');
     } else {
       dlBar.hidden = true;
+      console.log('[CYBR] download bar hidden (no videoUrl)');
     }
   }
 }
