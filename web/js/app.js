@@ -88,6 +88,23 @@ function applyMeta(project, version) {
     if (label) label.textContent = version?.status || '—';
     bar.hidden = !(version?.status === 'SENT_FOR_REVIEW');
   }
+
+  // botón de descarga
+  const dlBar = $('download-bar');
+  const dlBtn = $('btn-download');
+  if (dlBar && dlBtn) {
+    const rawUrl = version?.videoUrl || '';
+    const proxyUrl = normalizeVideoUrl(rawUrl);
+    if (proxyUrl) {
+      const ext = (proxyUrl.split('.').pop().split('?')[0] || 'mp4').slice(0, 4);
+      const safeName = `${project?.name || 'video'}_${version?.name || ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      dlBtn.href = proxyUrl;
+      dlBtn.download = `${safeName}.${ext}`;
+      dlBar.hidden = false;
+    } else {
+      dlBar.hidden = true;
+    }
+  }
 }
 
 function reviewUrl(token) {

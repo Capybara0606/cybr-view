@@ -1438,6 +1438,13 @@ button {
   display: none;
 }
 
+.download-bar {
+  margin: 12px 0 0;
+  display: flex;
+  justify-content: flex-start;
+}
+.download-bar[hidden] { display: none; }
+
 .approve-label {
   font-family: var(--font-mono);
   font-size: 11px;
