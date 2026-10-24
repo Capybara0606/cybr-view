@@ -3,14 +3,14 @@
  * Rutas (hash): #/login · #/dashboard (solo editor autenticado) · #/review/:token (cliente).
  * El cliente NO necesita cuenta; accede por un review token. El editor usa Firebase Auth.
  */
-import { createPlayer } from './player.js?v=20260827b';
-import { createSession } from './session.js?v=20260827b';
-import { createComments } from './comments.js?v=20260827b';
-import { CONFIG } from './config.js?v=20260827b';
-import { configured } from './firebase.js?v=20260827b';
-import { signIn, signOut, onAuth } from './auth.js?v=20260827b';
-import { canTransition } from './status.js?v=20260827b';
-import { normalizeVideoUrl } from './data.js?v=20260827b';
+import { createPlayer } from './player.js?v=20261023';
+import { createSession } from './session.js?v=20261023';
+import { createComments } from './comments.js?v=20261023';
+import { CONFIG } from './config.js?v=20261023';
+import { configured } from './firebase.js?v=20261023';
+import { signIn, signOut, onAuth } from './auth.js?v=20261023';
+import { canTransition } from './status.js?v=20261023';
+import { normalizeVideoUrl } from './data.js?v=20261023';
 
 const setText = (sel, val) => {
   const el = document.querySelector(sel);

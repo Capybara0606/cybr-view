@@ -3,12 +3,15 @@
  * Controla <video> con UI custom (play/pause, seek, frame, volumen, fullscreen)
  * y una timeline preparada para markers (FASE 3). Solo Vanilla JS.
  */
-import { CONFIG } from './config.js?v=20260827b';
-import { formatTime, formatTimecode, formatCode } from './time.js?v=20260827b';
+import { CONFIG } from './config.js?v=20261023';
+import { formatTime, formatTimecode, formatCode } from './time.js?v=20261023';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
 const MAX_BLOB_BYTES = 500 * 1024 * 1024;
+
+// velocidades estilo YouTube (L sube · K baja)
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 export function createPlayer() {
   const video = document.getElementById('video');
@@ -20,6 +23,9 @@ export function createPlayer() {
   const btnFrameFwd = document.getElementById('btn-frame-fwd');
   const btnMute = document.getElementById('btn-mute');
   const btnFullscreen = document.getElementById('btn-fullscreen');
+  const btnSpeedDown = document.getElementById('btn-speed-down');
+  const btnSpeedUp = document.getElementById('btn-speed-up');
+  const speedLabel = document.getElementById('speed-label');
   const volume = document.getElementById('volume');
 
   const timeCurrent = document.getElementById('time-current');
@@ -191,6 +197,27 @@ export function createPlayer() {
     syncVolumeUI();
   }
 
+  /* ---------- velocidad ---------- */
+  function setSpeed(rate) {
+    // defaultPlaybackRate persiste la velocidad al cambiar de versión (setSource)
+    video.defaultPlaybackRate = rate;
+    video.playbackRate = rate;
+  }
+  function stepSpeed(dir) {
+    const rate = video.playbackRate;
+    const next = dir > 0
+      ? SPEEDS.find((s) => s > rate + 0.001)
+      : [...SPEEDS].reverse().find((s) => s < rate - 0.001);
+    if (next) setSpeed(next);
+  }
+  function syncSpeedUI() {
+    const rate = video.playbackRate;
+    speedLabel.textContent = `${rate.toFixed(2)}X`;
+    speedLabel.classList.toggle('is-on', rate !== 1);
+    btnSpeedDown.disabled = rate <= SPEEDS[0];
+    btnSpeedUp.disabled = rate >= SPEEDS[SPEEDS.length - 1];
+  }
+
   /* ---------- fullscreen ---------- */
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
@@ -264,6 +291,8 @@ export function createPlayer() {
       case 'ArrowRight': seekBy(1); break;
       case 'KeyF': toggleFullscreen(); break;
       case 'KeyM': toggleMute(); break;
+      case 'KeyL': stepSpeed(1); break;
+      case 'KeyK': stepSpeed(-1); break;
     }
   }
 
@@ -277,6 +306,7 @@ export function createPlayer() {
   video.addEventListener('canplay', hideFallback);
   video.addEventListener('error', () => showFallback('SRC OFFLINE', 'CHECK SOURCE // CORS OR CODEC'));
   video.addEventListener('volumechange', syncVolumeUI);
+  video.addEventListener('ratechange', syncSpeedUI);
 
   document.addEventListener('fullscreenchange', syncFullscreenLabel);
   document.addEventListener('keydown', onKey);
@@ -287,6 +317,8 @@ export function createPlayer() {
   btnFrameFwd.addEventListener('click', () => stepFrame(1));
   btnMute.addEventListener('click', toggleMute);
   btnFullscreen.addEventListener('click', toggleFullscreen);
+  btnSpeedDown.addEventListener('click', () => stepSpeed(-1));
+  btnSpeedUp.addEventListener('click', () => stepSpeed(1));
   volume.addEventListener('input', syncVolumeUI);
 
   scrubber.addEventListener('pointerdown', beginDrag);
@@ -300,6 +332,7 @@ export function createPlayer() {
   /* ---------- init ---------- */
   syncVolumeUI();
   syncPlayLabel();
+  syncSpeedUI();
   renderTime();
   hideFallback();
   loadSource();

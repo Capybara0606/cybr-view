@@ -7,6 +7,16 @@
 
 ---
 
+## [Unreleased] — 2026-10-23
+
+### Added
+- **Velocidad de reproducción** (estilo YouTube) en el reproductor: botones `SPEED -` /
+  `SPEED +` con readout `1.00X`, pasos 0.25x–2x. Atajos: **L** sube · **K** baja.
+  La velocidad se mantiene al cambiar de versión (`defaultPlaybackRate`).
+
+### Changed
+- Cache-bust de imports de módulos a `?v=20261023`.
+
 ## [0.10.1] — 2026-08-26
 
 ### Added

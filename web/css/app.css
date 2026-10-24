@@ -621,10 +621,30 @@ button {
 }
 
 .ctrl-frames,
+.ctrl-speed,
 .ctrl-volume {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* readout de velocidad */
+.speed-label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  min-width: 5ch;
+  text-align: center;
+}
+
+.speed-label.is-on {
+  color: var(--green);
+}
+
+.ctrl-speed .btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* slider de volumen custom */

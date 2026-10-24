@@ -4,7 +4,7 @@
  * resolución y sincronización de markers sobre el reproductor.
  * Todo en memoria (state.js). Firebase llega en la FASE 3.
  */
-import { formatCode } from './time.js?v=20260827b';
+import { formatCode } from './time.js?v=20261023';
 
 const AUTHOR = 'GUEST';
 
