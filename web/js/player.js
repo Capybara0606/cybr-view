@@ -3,12 +3,17 @@
  * Controla <video> con UI custom (play/pause, seek, frame, volumen, fullscreen)
  * y una timeline preparada para markers (FASE 3). Solo Vanilla JS.
  */
-import { CONFIG } from './config.js?v=20261023';
-import { formatTime, formatTimecode, formatCode } from './time.js?v=20261023';
+import { CONFIG } from './config.js?v=20261025';
+import { formatTime, formatTimecode, formatCode } from './time.js?v=20261025';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
 const MAX_BLOB_BYTES = 500 * 1024 * 1024;
+
+// iPhone/iPad (iPadOS se presenta como Mac con touch). Safari iOS no carga
+// metadata hasta que el usuario toca play, y no soporta fullscreen en un <div>.
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // velocidades estilo YouTube (L sube · K baja)
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -138,6 +143,9 @@ export function createPlayer() {
 
   function watchForMetadata(url) {
     clearTimeout(metaTimer);
+    // en iOS readyState sigue en 0 hasta el primer play: el timeout dispararía
+    // siempre y bajaría el video entero a memoria (blob), que Safari no reproduce bien.
+    if (IS_IOS) return;
     metaTimer = setTimeout(() => {
       if (video.readyState < 1) blobFallback(url);
     }, 6000);
@@ -220,8 +228,14 @@ export function createPlayer() {
 
   /* ---------- fullscreen ---------- */
   function toggleFullscreen() {
+    const enter = player.requestFullscreen || player.webkitRequestFullscreen;
+    if (!enter) {
+      // iPhone: solo el <video> puede ir a pantalla completa (player nativo)
+      video.webkitEnterFullscreen?.();
+      return;
+    }
     if (!document.fullscreenElement) {
-      (player.requestFullscreen || player.webkitRequestFullscreen).call(player);
+      enter.call(player);
     } else {
       (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     }
