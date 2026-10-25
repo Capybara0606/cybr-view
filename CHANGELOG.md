@@ -7,6 +7,15 @@
 
 ---
 
+## [Unreleased] — 2026-10-25
+
+### Fixed
+- **iPhone / Safari iOS no reproducía los videos.** iOS no carga metadata hasta el primer
+  play, así que el timeout de 6 s de `watchForMetadata` disparaba siempre `blobFallback` y
+  bajaba el video entero a memoria (blob). Ahora se omite en iOS.
+- FULLSCREEN en iPhone: usa `video.webkitEnterFullscreen()` (iOS no soporta fullscreen en un `<div>`).
+- Cache-bust de imports a `?v=20261025`.
+
 ## [Unreleased] — 2026-10-23
 
 ### Added
