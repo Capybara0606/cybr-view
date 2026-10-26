@@ -10,6 +10,7 @@
 ## [Unreleased] — 2026-10-26
 
 ### Added
+- Copia de una revisión existente mediante `?env=dev&mobile=1#/import/TOKEN`: lectura del video y comentarios, nuevo token local y persistencia separada sin escrituras a Firebase.
 - Propuesta móvil opt-in con `?mobile=1`: video 16:9, controles táctiles de 44px, controles avanzados desplegables y accesos a video/comentarios. Sin cambiar el layout predeterminado ni el de escritorio.
 
 

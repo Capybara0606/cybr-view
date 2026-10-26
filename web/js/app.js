@@ -395,9 +395,40 @@ function parseHash() {
   return { seg: parts[0] || '', param: parts[1] || '' };
 }
 
+let previewImportPending = false;
+async function openPreviewImport(token) {
+  if (previewImportPending) return;
+  if (configured || CONFIG.env !== 'dev') {
+    showView('review');
+    showDenied('invalid');
+    $('denied-text').textContent = 'Abre esta copia con ?env=dev&mobile=1.';
+    return;
+  }
+  previewImportPending = true;
+  showView('review');
+  document.body.dataset.view = 'import';
+  $('review-denied').hidden = false;
+  $('review-denied').querySelector('.denied-code').textContent = 'COPIA DE PRUEBA';
+  $('denied-text').textContent = 'Leyendo la revisión original. No se modificarán sus datos.';
+  document.querySelector('#view-review .review-grid').style.display = 'none';
+  try {
+    let localToken = session.findImportedReview(token);
+    if (!localToken) {
+      const { readReviewSnapshot } = await import('./preview-import.js?v=20261026');
+      localToken = session.importReview(token, await readReviewSnapshot(token));
+    }
+    if (location.hash === `#/import/${token}`) location.replace(`#/review/${localToken}`);
+  } catch (error) {
+    if (location.hash === `#/import/${token}`) {
+      $('denied-text').textContent = `${error.message} Recarga para reintentar. La producción no se ha modificado.`;
+    }
+  } finally { previewImportPending = false; }
+}
+
 function route() {
   const { seg, param } = parseHash();
 
+  if (seg === 'import') { openPreviewImport(param); return; }
   if (seg === 'login') { showView('login'); return; }
   if (seg === 'dashboard') {
     if (!authState) { location.hash = '#/login'; return; }

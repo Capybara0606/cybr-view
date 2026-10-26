@@ -400,6 +400,32 @@ export function createSession() {
     return { ok: true, project: found.project, version: found.version };
   }
 
+  function findImportedReview(sourceToken) {
+    if (useRemote) return null;
+    return tree.find((p) => p.previewSource === sourceToken)?.versions[0]?.accessToken || null;
+  }
+
+  function importReview(sourceToken, snapshot) {
+    if (useRemote) throw new Error('La importación solo está disponible en modo de prueba.');
+    const existing = findImportedReview(sourceToken);
+    if (existing) return existing;
+    const now = Date.now();
+    const accessToken = generateToken();
+    tree.unshift({
+      id: `preview_${generateToken()}`, name: `${snapshot.name} · PRUEBA`,
+      previewSource: sourceToken, createdAt: now, updatedAt: now,
+      versions: [{
+        id: 'preview_v01', name: snapshot.versionName, videoUrl: snapshot.videoUrl,
+        fps: snapshot.fps, status: snapshot.status,
+        accessToken, accessStatus: 'active', comments: snapshot.comments,
+        createdAt: now, updatedAt: now, approvedAt: null, approvedBy: null, activity: [],
+      }],
+    });
+    persistLocal();
+    notifyProjects();
+    return accessToken;
+  }
+
   /* ---------- boot ---------- */
 
   if (useRemote) {
@@ -418,6 +444,8 @@ export function createSession() {
     onProjects: (fn) => { projectSubs.add(fn); fn(tree); return () => projectSubs.delete(fn); },
     resolveToken,
     openReview,
+    findImportedReview,
+    importReview,
     setAccessStatus,
     setReviewStatus,
     approveActive,
