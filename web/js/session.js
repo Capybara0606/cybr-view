@@ -4,7 +4,7 @@
  * Comentarios: Firebase RTDB (realtime) si está configurado; localStorage si no.
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
-import { defaultData, load, save, refreshVideoUrls, findByToken, generateToken, normalizeVideoUrl } from './data.js?v=20261025';
+import { defaultData, load, save, refreshVideoUrls, findByToken, generateToken, normalizeVideoUrl } from './data.js?v=20261026';
 import {
   configured,
   listenComments, createComment, updateComment, deleteComment,
@@ -12,8 +12,8 @@ import {
   createProject as fbCreateProject, createVersion as fbCreateVersion,
   updateVersion as fbUpdateVersion, updateProject as fbUpdateProject, deleteProject as fbDeleteProject,
   listenProjects, seedIfEmpty, cleanupBrokenVersions,
-} from './firebase.js?v=20261025';
-import { canTransition } from './status.js?v=20261025';
+} from './firebase.js?v=20261026';
+import { canTransition } from './status.js?v=20261026';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
 

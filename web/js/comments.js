@@ -4,7 +4,7 @@
  * resolución y sincronización de markers sobre el reproductor.
  * Todo en memoria (state.js). Firebase llega en la FASE 3.
  */
-import { formatCode } from './time.js?v=20261025';
+import { formatCode } from './time.js?v=20261026';
 
 const AUTHOR = 'GUEST';
 
@@ -19,7 +19,11 @@ export function createComments({ store, player, canDelete = false }) {
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
 
-  const nextId = () => `c_${crypto.randomUUID().slice(0, 8)}`;
+  const nextId = () => {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return `c_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+  };
   let capturedTime = null;
   let activeId = null;
   let replyTo = null;

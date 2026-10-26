@@ -5,7 +5,7 @@
  *
  * Estructura: cybrview/v1/projects/{projectId}/versions/{versionId}/comments/{commentId}
  */
-import { CONFIG } from './config.js?v=20261025';
+import { CONFIG } from './config.js?v=20261026';
 
 const fireConfig = CONFIG.firebase || {};
 

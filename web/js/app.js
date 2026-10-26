@@ -3,14 +3,15 @@
  * Rutas (hash): #/login · #/dashboard (solo editor autenticado) · #/review/:token (cliente).
  * El cliente NO necesita cuenta; accede por un review token. El editor usa Firebase Auth.
  */
-import { createPlayer } from './player.js?v=20261025';
-import { createSession } from './session.js?v=20261025';
-import { createComments } from './comments.js?v=20261025';
-import { CONFIG } from './config.js?v=20261025';
-import { configured } from './firebase.js?v=20261025';
-import { signIn, signOut, onAuth } from './auth.js?v=20261025';
-import { canTransition } from './status.js?v=20261025';
-import { normalizeVideoUrl } from './data.js?v=20261025';
+import { initMobileProposal } from './mobile-proposal.js?v=20261026';
+import { createPlayer } from './player.js?v=20261026';
+import { createSession } from './session.js?v=20261026';
+import { createComments } from './comments.js?v=20261026';
+import { CONFIG } from './config.js?v=20261026';
+import { configured } from './firebase.js?v=20261026';
+import { signIn, signOut, onAuth } from './auth.js?v=20261026';
+import { canTransition } from './status.js?v=20261026';
+import { normalizeVideoUrl, VIDEO_PROXY_BASE } from './data.js?v=20261026';
 
 const setText = (sel, val) => {
   const el = document.querySelector(sel);
@@ -65,6 +66,7 @@ function wireBackend(session) {
 
 /* ---------- vistas ---------- */
 function showView(name) {
+  document.body.dataset.view = name;
   $('view-login').hidden = name !== 'login';
   $('view-dashboard').hidden = name !== 'dashboard';
   $('view-review').hidden = name !== 'review';
@@ -97,32 +99,17 @@ function applyMeta(project, version) {
     const proxyUrl = normalizeVideoUrl(rawUrl);
     if (proxyUrl) {
       const safeName = `${project?.name || 'video'}_${version?.name || ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-      dlBtn.href = '#';
+      const downloadUrl = new URL(proxyUrl, location.href);
+      const managed = downloadUrl.origin === new URL(VIDEO_PROXY_BASE).origin;
+      if (managed) downloadUrl.searchParams.set('download', `${safeName}.mp4`);
+      // La navegación conserva el gesto del usuario y permite descargar por streaming.
+      dlBtn.href = downloadUrl.href;
       dlBtn.download = `${safeName}.mp4`;
-      dlBtn.onclick = async (e) => {
-        e.preventDefault();
-        const prev = dlBtn.textContent;
-        dlBtn.textContent = 'DESCARGANDO...';
-        dlBtn.disabled = true;
-        try {
-          const res = await fetch(proxyUrl);
-          const blob = await res.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = `${safeName}.mp4`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(blobUrl);
-        } catch (err) {
-          console.error('[CYBR] download failed', err);
-          window.open(proxyUrl, '_blank');
-        } finally {
-          dlBtn.textContent = prev;
-          dlBtn.disabled = false;
-        }
-      };
+      dlBtn.target = '_blank';
+      dlBtn.rel = 'noopener';
+      dlBtn.onclick = null;
+      dlBtn.textContent = managed ? 'DESCARGAR VIDEO' : 'ABRIR / GUARDAR VIDEO';
+      dlBtn.title = managed ? 'Descargar video' : 'Abre el video original; usa Guardar video o Compartir para descargarlo.';
       dlBar.hidden = false;
     } else {
       dlBar.hidden = true;
@@ -432,6 +419,8 @@ function wireNav() {
 player = createPlayer();
 session = createSession();
 comments = createComments({ store: session, player, canDelete: false });
+
+initMobileProposal({ player, comments, session });
 
 wireBackend(session);
 wireKeys(comments);

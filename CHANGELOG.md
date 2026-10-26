@@ -7,6 +7,19 @@
 
 ---
 
+## [Unreleased] — 2026-10-26
+
+### Added
+- Propuesta móvil opt-in con `?mobile=1`: video 16:9, controles táctiles de 44px, controles avanzados desplegables y accesos a video/comentarios. Sin cambiar el layout predeterminado ni el de escritorio.
+
+
+### Fixed
+- Comentarios de prueba por HTTP en la red local: generar IDs con getRandomValues, disponible sin HTTPS, en lugar de randomUUID.
+- R2: cabeceras Content-Range y Content-Length correctas para rangos, sufijos, HEAD y 416.
+- Drive: rechazar respuestas HTML/errores en lugar de presentarlas como MP4.
+- Descarga del proxy por navegación nativa con Content-Disposition attachment, sin Blob ni ventanas asíncronas. Fuentes externas se abren con instrucciones para guardar.
+- Al cambiar a una versión sin video se limpia la fuente anterior. Se cancelan fallbacks pendientes y se liberan URLs Blob al cambiar de versión; límite de fallback de 160 MB.
+
 ## [Unreleased] — 2026-10-25
 
 ### Fixed

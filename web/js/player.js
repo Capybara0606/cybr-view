@@ -3,12 +3,12 @@
  * Controla <video> con UI custom (play/pause, seek, frame, volumen, fullscreen)
  * y una timeline preparada para markers (FASE 3). Solo Vanilla JS.
  */
-import { CONFIG } from './config.js?v=20261025';
-import { formatTime, formatTimecode, formatCode } from './time.js?v=20261025';
+import { CONFIG } from './config.js?v=20261026';
+import { formatTime, formatTimecode, formatCode } from './time.js?v=20261026';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
-const MAX_BLOB_BYTES = 500 * 1024 * 1024;
+const MAX_BLOB_BYTES = 160 * 1024 * 1024;
 
 // iPhone/iPad (iPadOS se presenta como Mac con touch). Safari iOS no carga
 // metadata hasta que el usuario toca play, y no soporta fullscreen en un <div>.
@@ -127,14 +127,24 @@ export function createPlayer() {
   }
   let currentSource = '';
   let metaTimer = null;
+  let sourceController = null;
+  let blobUrl = null;
 
   async function blobFallback(url) {
+    const controller = sourceController;
     try {
-      const head = await fetch(url, { headers: { range: 'bytes=0-0' } });
+      const head = await fetch(url, { headers: { range: 'bytes=0-0' }, signal: controller.signal });
+      if (!head.ok) return;
       const len = parseInt((head.headers.get('content-range') || '').split('/')[1] || '0', 10);
+      await head.body?.cancel();
       if (!(len > 0) || len > MAX_BLOB_BYTES) return;
-      const blob = await (await fetch(url)).blob();
-      video.src = URL.createObjectURL(blob);
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) return;
+      const blob = await response.blob();
+      if (controller.signal.aborted || currentSource !== url) return;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      blobUrl = URL.createObjectURL(blob);
+      video.src = blobUrl;
       video.load();
     } catch {
       /* mantiene el src actual */
@@ -152,8 +162,26 @@ export function createPlayer() {
   }
 
   function setSource(url) {
-    if (!url || url === currentSource) return;
-    currentSource = url;
+    if (url && url === currentSource) return;
+    clearTimeout(metaTimer);
+    sourceController?.abort();
+    sourceController = new AbortController();
+    video.pause();
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    blobUrl = null;
+    currentSource = url || '';
+    hideFallback();
+    scrubProgress.style.width = '0%';
+    scrubBuffer.style.width = '0%';
+    scrubThumb.style.left = '0%';
+    timelineScale.innerHTML = '';
+    markerLane.querySelectorAll('.marker').forEach((el) => el.remove());
+    if (!url) {
+      video.removeAttribute('src');
+      video.load();
+      showFallback('SIN VIDEO', 'Esta versión no tiene un video disponible.');
+      return;
+    }
     video.src = url;
     video.load();
     watchForMetadata(url);

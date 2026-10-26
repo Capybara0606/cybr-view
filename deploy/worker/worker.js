@@ -27,6 +27,7 @@ const cors = () => ({
   'access-control-allow-methods': 'GET,HEAD,PUT,POST,OPTIONS',
   'access-control-allow-headers': 'range,content-type,content-length',
   'access-control-max-age': '86400',
+  'access-control-expose-headers': 'content-range,content-length,content-disposition',
 });
 
 const err = (msg, status = 400) => new Response(JSON.stringify({ error: msg }), {
@@ -49,7 +50,14 @@ export default {
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
     if (path.startsWith('/upload')) return handleUpload(request, env, url);
-    return handleServe(request, env);
+    if (!['GET', 'HEAD'].includes(request.method)) return err('METHOD_NOT_ALLOWED', 405);
+    const response = await handleServe(request, env);
+    if (url.searchParams.has('download') && response.ok) {
+      const name = (url.searchParams.get('download') || 'video.mp4')
+        .replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 120);
+      response.headers.set('content-disposition', `attachment; filename="${name}"`);
+    }
+    return response;
   },
 };
 
@@ -82,21 +90,37 @@ async function handleServe(request, env) {
   // desde el proxy de Drive (igual que antes). No rompe nada.
   if (!env.PROXIES_BUCKET) return serveDrive(id, request.method, rangeHeader);
 
-  const obj = await env.PROXIES_BUCKET.get(id, { range: rangeHeader });
-
-  if (obj && obj.body) {
+  const meta = await env.PROXIES_BUCKET.head(id);
+  if (meta) {
     const headers = new Headers(cors());
-    headers.set('content-type', (obj.httpMetadata && obj.httpMetadata.contentType) || 'video/mp4');
+    headers.set('content-type', meta.httpMetadata?.contentType || 'video/mp4');
     headers.set('accept-ranges', 'bytes');
     headers.set('content-disposition', 'inline');
     headers.set('cross-origin-resource-policy', 'cross-origin');
-    headers.set('content-length', String(obj.size));
+    headers.set('content-length', String(meta.size));
+    if (meta.httpEtag) headers.set('etag', meta.httpEtag);
+    // HEAD describe la representación completa; Range solo se aplica a GET.
+    if (request.method === 'HEAD') return new Response(null, { headers });
 
-    if (obj.range) {
-      headers.set('content-range', obj.range);
-      return new Response(obj.body, { status: 206, headers });
+    let range = null;
+    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+    if (match && (match[1] || match[2])) {
+      const start = match[1] ? Number(match[1]) : Math.max(0, meta.size - Number(match[2]));
+      const end = match[1] && match[2] ? Math.min(Number(match[2]), meta.size - 1) : meta.size - 1;
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= meta.size) {
+        headers.set('content-range', `bytes */${meta.size}`);
+        headers.set('content-length', '0');
+        return new Response(null, { status: 416, headers });
+      }
+      range = { offset: start, length: end - start + 1 };
     }
-    return new Response(obj.body, { status: 200, headers });
+    const obj = await env.PROXIES_BUCKET.get(id, range ? { range } : {});
+    if (!obj?.body) return err('NOT_FOUND', 404);
+    if (range) {
+      headers.set('content-range', `bytes ${range.offset}-${range.offset + range.length - 1}/${meta.size}`);
+      headers.set('content-length', String(range.length));
+    }
+    return new Response(obj.body, { status: range ? 206 : 200, headers });
   }
 
   // No está en R2: proxea el id tal cual de Google Drive (videos existentes).
@@ -104,14 +128,32 @@ async function handleServe(request, env) {
 }
 
 async function serveDrive(id, method, rangeHeader) {
-  const drive = await fetch(
-    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
-    {
-      method,
-      redirect: 'follow',
-      headers: { range: rangeHeader, 'user-agent': 'Mozilla/5.0' },
-    },
-  );
+  let drive;
+  try {
+    drive = await fetch(
+      `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
+      {
+        method,
+        redirect: 'follow',
+        headers: { range: rangeHeader, 'user-agent': 'Mozilla/5.0' },
+      },
+    );
+  } catch {
+    return err('DRIVE_UNAVAILABLE', 502);
+  }
+  if (![200, 206].includes(drive.status)) {
+    const response = err('DRIVE_ERROR:' + drive.status, drive.status === 416 ? 416 : 502);
+    if (drive.status === 416 && drive.headers.has('content-range')) {
+      response.headers.set('content-range', drive.headers.get('content-range'));
+    }
+    await drive.body?.cancel();
+    return response;
+  }
+  const type = (drive.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!['video/mp4', 'application/octet-stream'].includes(type)) {
+    await drive.body?.cancel();
+    return err('DRIVE_NOT_VIDEO', 502);
+  }
 
   const headers = new Headers(cors());
   headers.set('content-type', 'video/mp4');
@@ -123,8 +165,5 @@ async function serveDrive(id, method, rangeHeader) {
     if (v) headers.set(h, v);
   }
 
-  if (drive.status === 200 || drive.status === 206) {
-    return new Response(drive.body, { status: drive.status, headers });
-  }
-  return err('DRIVE_ERROR:' + drive.status, 502);
+  return new Response(method === 'HEAD' ? null : drive.body, { status: drive.status, headers });
 }
