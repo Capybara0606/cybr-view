@@ -32,26 +32,60 @@ with sync_playwright() as p:
   page.wait_for_function("document.querySelector('#video').readyState>=2")
   assert page.locator('.kiru-identity strong').inner_text()=='KIRU'
   assert not page.locator('#review-actions').is_visible()
-  assert page.locator('.is-reply').count()==1
+  assert page.locator('.is-reply').count()==0
+  assert page.get_by_role('button',name='Responder',exact=True).count()==0
+  logo=page.locator('.kiru-header-logo').bounding_box();word=page.locator('.kiru-wordmark strong').bounding_box()
+  assert logo['height']==20 and abs((logo['y']+logo['height']/2)-(word['y']+word['height']/2))<1
+  assert page.locator('#btn-play svg').count()==1 and page.locator('#btn-play').get_attribute('aria-label')=='Reproducir'
+  assert page.locator('#btn-speed-down svg').count()==1 and page.locator('#btn-speed-up svg').count()==1
+  assert page.locator('#btn-mute').inner_text()=='MUTE'
   assert page.evaluate('document.documentElement.scrollWidth')==w,(w,page.evaluate('document.documentElement.scrollWidth'))
   page.get_by_role('button',name='Pendientes · 2',exact=True).click()
   assert page.get_by_text('Color corregido y aprobado.',exact=True).count()==0
   page.get_by_role('button',name='Todos · 3',exact=True).click()
-  # Reply stays attached to the original time, and is rendered beneath its parent.
-  page.locator('[data-id="root"] .comment-actions button').first.click()
-  page.locator('#composer-text').fill('Nueva respuesta de prueba')
+  # The whole card seeks; action buttons do not change the playback position.
+  page.locator('article[data-id="root"] .comment-text').click()
+  page.wait_for_function("Math.abs(document.querySelector('#video').currentTime-3)<.1")
+  page.locator('article[data-id="resolved"]').focus();page.locator('article[data-id="resolved"]').press('Enter')
+  page.wait_for_function("Math.abs(document.querySelector('#video').currentTime-8)<.1")
+  page.locator('article[data-id="root"]').get_by_role('button',name='✓ Resolver',exact=True).click()
+  assert 'line-through' in page.locator('article[data-id="root"] .comment-text').evaluate('(n)=>getComputedStyle(n).textDecorationLine')
+  page.locator('article[data-id="root"]').get_by_role('button',name='Reabrir',exact=True).click()
+  assert 'line-through' not in page.locator('article[data-id="root"] .comment-text').evaluate('(n)=>getComputedStyle(n).textDecorationLine')
+  assert abs(page.locator('#video').evaluate('(v)=>v.currentTime')-8)<.1
+  # Editing preserves the timestamp and a pre-existing draft; cancel leaves the original unchanged.
+  page.locator('#composer-text').fill('Borrador sin enviar')
+  page.locator('article[data-id="root"]').get_by_role('button',name='Editar',exact=True).click()
   assert '00:03' in page.locator('#composer-code').inner_text()
+  page.locator('#composer-text').fill('Cambio que cancelamos')
+  page.get_by_role('button',name='Cancelar edición',exact=True).click()
+  assert page.locator('#composer-text').input_value()=='Borrador sin enviar'
+  assert page.get_by_text('Ajustar el ritmo de esta transición.',exact=True).count()==1
+  page.locator('article[data-id="root"]').get_by_role('button',name='Editar',exact=True).click()
+  page.locator('#composer-text').fill('Comentario editado')
+  page.locator('#video').evaluate('(v)=>v.currentTime=10')
+  page.locator('#btn-send').click()
+  page.get_by_text('Comentario actualizado. Se conserva su tiempo original.',exact=True).wait_for()
+  assert page.locator('article[data-id="root"] .comment-code').inner_text()=='00:03.00'
+  assert page.locator('#composer-text').input_value()=='Borrador sin enviar'
+  page.reload(wait_until='domcontentloaded');page.get_by_text('Comentario editado',exact=True).wait_for()
+  assert page.locator('article[data-id="root"] .comment-code').inner_text()=='00:03.00'
+  # Delete cancellation and confirmation; former replies remain readable as independent comments.
+  page.once('dialog',lambda d:d.dismiss());page.locator('article[data-id="reply"]').get_by_role('button',name='Eliminar',exact=True).click()
+  assert page.locator('article[data-id="reply"]').count()==1
+  page.once('dialog',lambda d:d.accept());page.locator('article[data-id="reply"]').get_by_role('button',name='Eliminar',exact=True).click()
+  page.get_by_text('Comentario eliminado de esta copia de prueba.',exact=True).wait_for()
+  assert page.locator('article[data-id="reply"]').count()==0
+  page.reload(wait_until='domcontentloaded');page.get_by_text('Comentario editado',exact=True).wait_for()
+  assert page.locator('article[data-id="reply"]').count()==0
+  page.wait_for_function("document.querySelector('#video').readyState>=2")
+  page.locator('#video').evaluate('(v)=>v.currentTime=6')
+  page.locator('#composer-text').fill('Nueva observación')
   page.locator('#video').evaluate('(v)=>v.currentTime=10')
   page.locator('#composer-text').press('End');page.locator('#composer-text').type('.')
-  assert '00:03' in page.locator('#composer-code').inner_text()
+  assert '00:06' in page.locator('#composer-code').inner_text()
   page.locator('#btn-send').click()
   page.get_by_text('Comentario añadido a esta copia de prueba.',exact=True).wait_for()
-  assert page.locator('.is-reply').count()==2
-  text=page.locator('#comments-list .comment-text').all_text_contents()
-  assert text.index('Nueva respuesta de prueba.')<text.index('Color corregido y aprobado.')
-  page.locator('#video').evaluate('(v)=>v.currentTime=6')
-  page.locator('#composer-text').focus()
-  assert '00:06' in page.locator('#composer-code').inner_text()
   ctx.route('https://video.test/broken.mp4',lambda r:r.fulfill(status=404,body='missing'))
   page.locator('#video').evaluate("v=>{v.src='https://video.test/broken.mp4';v.load()}")
   page.get_by_role('button',name='Reintentar',exact=True).wait_for()
@@ -80,10 +114,10 @@ with sync_playwright() as p:
    page.locator('#video').evaluate('(v)=>{v.pause();v.currentTime=3}')
    page.wait_for_function("getComputedStyle(document.querySelector('#boot')).opacity==='0'")
    page.evaluate('window.scrollTo(0,0)')
-   page.screenshot(path=str(output / 'propuesta-v3-inicio.png'))
-   page.screenshot(path=str(output / 'propuesta-v3-completa.png'),full_page=True)
+   page.screenshot(path=str(output / 'propuesta-v4-inicio.png'))
+   page.screenshot(path=str(output / 'propuesta-v4-completa.png'),full_page=True)
    page.locator('.composer').scroll_into_view_if_needed()
-   page.screenshot(path=str(output / 'propuesta-v3-comentarios.png'))
+   page.screenshot(path=str(output / 'propuesta-v4-comentarios.png'))
    # Local editor can manage; deletion remains protected by confirmation.
    page.goto('http://127.0.0.1:3000/?env=dev&mobile=1#/login',wait_until='domcontentloaded')
    page.locator('#login-email').fill('editor@example.test');page.locator('#login-password').fill('local-only');page.locator('#login-form button').click()
@@ -95,7 +129,7 @@ with sync_playwright() as p:
    assert page.locator('#view-review').is_visible()
   assert not writes,writes
   assert not errors,errors
-  print('PASS',w,'branding, threads, filter, timed reply, retry, timeline, approval and isolated writes',flush=True)
+  print('PASS',w,'compact brand, card seeking, resolve, edit/delete, draft/time preservation, icons and isolated writes',flush=True)
   ctx.close()
  b.close()
 

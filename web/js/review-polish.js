@@ -6,8 +6,9 @@ export function initReviewPolish({ player, session }) {
   const identity = document.createElement('div'); identity.className = 'kiru-identity';
   const name = document.createElement('strong'); name.textContent = 'KIRU';
   const product = document.createElement('span'); product.textContent = 'CYBR VIEW / REVISIÓN DE VIDEO';
-  identity.append(name, product); brand.append(logo, identity);
-  const badge = document.createElement('span'); badge.className = 'review-preview-tag'; badge.textContent = 'PROPUESTA /03';
+  const wordmark = document.createElement('div'); wordmark.className = 'kiru-wordmark';
+  wordmark.append(logo, name); identity.append(wordmark, product); brand.append(identity);
+  const badge = document.createElement('span'); badge.className = 'review-preview-tag'; badge.textContent = 'PROPUESTA /04';
   identity.append(badge);
 
   document.querySelector('.comments .panel-name').textContent = 'COMENTARIOS';
@@ -18,7 +19,16 @@ export function initReviewPolish({ player, session }) {
   $('btn-send').textContent = 'Enviar comentario';
   $('btn-prev').textContent = '← Anterior'; $('btn-next').textContent = 'Siguiente →';
   $('btn-frame-back').textContent = '← 1 frame'; $('btn-frame-fwd').textContent = '1 frame →';
-  $('btn-speed-down').textContent = '− Velocidad'; $('btn-speed-up').textContent = '+ Velocidad';
+  function icon(button, path, label) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '20'); svg.setAttribute('height', '20');
+    svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
+    const shape = document.createElementNS(svg.namespaceURI, 'path');
+    shape.setAttribute('d', path); shape.setAttribute('fill', 'currentColor'); svg.append(shape);
+    button.replaceChildren(svg); button.setAttribute('aria-label', label); button.title = label;
+  }
+  icon($('btn-speed-down'), 'M11 5v14L2 12zm11 0v14l-9-7z', 'Reducir velocidad');
+  icon($('btn-speed-up'), 'M2 5v14l9-7zm11 0v14l9-7z', 'Aumentar velocidad');
   $('btn-approve').textContent = '✓ Aprobar versión';
   $('btn-delete-project-review').textContent = 'Eliminar proyecto';
   const menu = document.createElement('details'); menu.className = 'review-manage';
@@ -38,11 +48,14 @@ export function initReviewPolish({ player, session }) {
   }
   session.onSelect(paint); paint({ version: session.getVersion() });
 
-  const syncPlay = () => { $('btn-play').textContent = player.video.paused ? '▶ Reproducir' : 'Ⅱ Pausar'; };
-  const syncMute = () => { $('btn-mute').textContent = player.video.muted ? 'Activar' : 'Silenciar'; };
+  const syncPlay = () => icon($('btn-play'), player.video.paused ? 'M7 3v18l15-9z' : 'M5 3h5v18H5zm9 0h5v18h-5z', player.video.paused ? 'Reproducir' : 'Pausar');
+  const syncMute = () => {
+    $('btn-mute').textContent = player.video.muted ? 'UNMUTE' : 'MUTE';
+    $('btn-mute').setAttribute('aria-label', player.video.muted ? 'Activar sonido' : 'Silenciar');
+  };
   const syncFull = () => {
     const full = !!(document.fullscreenElement || document.webkitFullscreenElement || player.video.webkitDisplayingFullscreen);
-    $('btn-fullscreen').textContent = full ? '↙ Salir de pantalla completa' : '⛶ Pantalla completa';
+    icon($('btn-fullscreen'), full ? 'M8 3h2v7H3V8h5zm6 0h2v5h5v2h-7zM3 14h7v7H8v-5H3zm11 0h7v2h-5v5h-2z' : 'M3 3h7v2H5v5H3zm11 0h7v7h-2V5h-5zM3 14h2v5h5v2H3zm16 0h2v7h-7v-2h5z', full ? 'Salir de pantalla completa' : 'Pantalla completa');
   };
   ['play', 'pause', 'ended'].forEach((event) => player.video.addEventListener(event, syncPlay));
   player.video.addEventListener('volumechange', syncMute);

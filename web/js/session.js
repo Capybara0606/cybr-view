@@ -493,6 +493,20 @@ export function createSession() {
       logActivity(currentVersion(), status === 'resolved' ? 'comment_resolved' : 'comment_reopened', { commentId: id });
       persistLocal();
     },
+    async edit(id, body) {
+      const text = String(body || '').trim();
+      if (!text || !mirror.some((c) => c.id === id)) throw new Error('COMMENT_NOT_FOUND_OR_EMPTY');
+      const patch = { body: text, updatedAt: Date.now() };
+      if (useRemote) {
+        await updateComment(tok(), id, patch);
+        optimisticPatch(id, patch);
+      } else {
+        localMutate((v) => { v.comments = v.comments.map((c) => c.id === id ? { ...c, ...patch } : c); });
+        applyMirror(localComments());
+      }
+      logActivity(currentVersion(), 'comment_edited', { commentId: id });
+      persistLocal();
+    },
     async remove(id) {
       if (useRemote) {
         try { await deleteComment(tok(), id); }

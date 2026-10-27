@@ -1,4 +1,4 @@
-/* Propuesta /03: solo se carga con ?mobile=1; escritorio conserva su layout. */
+/* Propuesta /04: solo se carga con ?mobile=1; escritorio conserva su layout. */
 .mobile-seek, .mobile-project-actions, .mobile-review-dock { display: none; }
 
 @media (max-width: 820px) {
@@ -115,11 +115,11 @@
   .mobile-proposal[data-view="review"] .mobile-review-dock { position: static; }
 }
 
-/* /03 — KIRU y jerarquía de revisión. */
+/* /04 — KIRU y jerarquía de revisión. */
 .mobile-proposal .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.mobile-proposal .kiru-header-logo { width: 42px; height: 42px; flex: 0 0 auto; }
+.mobile-proposal .kiru-header-logo { width: 20px; height: 20px; flex: 0 0 auto; }
 .mobile-proposal .kiru-identity { display: grid; gap: 5px; min-width: 0; }
-.mobile-proposal .kiru-identity strong { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: .14em; }
+.mobile-proposal .kiru-identity strong { font-size: 15px; font-weight: 700; line-height: 20px; letter-spacing: .12em; }
 .mobile-proposal .kiru-identity > span { font-size: 8px; color: var(--muted); letter-spacing: .08em; }
 .mobile-proposal .kiru-identity .review-preview-tag { color: var(--green); font-size: 8px; }
 .mobile-proposal .review-state { font: 11px var(--font-mono); color: var(--green); display: flex; align-items: center; gap: 8px; }
@@ -141,12 +141,10 @@
 .mobile-proposal .comment-filters [aria-pressed="true"] { border-color: var(--green); color: var(--green); background: rgba(29,185,84,.06); }
 .mobile-proposal .comment-item { border-left: 2px solid transparent; padding: 16px 12px; }
 .mobile-proposal .comment-item.is-active { border-left-color: var(--green); }
-.mobile-proposal .comment-item.is-reply { margin-left: 20px; border-left-color: var(--border); padding-left: 12px; background: rgba(255,255,255,.015); }
 .mobile-proposal .comment-head { align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.mobile-proposal button.comment-code { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border); font-size: 12px; }
 .mobile-proposal .comment-status { font-size: 9px; letter-spacing: .04em; }
 .mobile-proposal .comment-text { font-size: 15px; line-height: 1.65; margin: 0 0 10px; white-space: pre-wrap; }
-.mobile-proposal .comment-item.is-resolved .comment-text { text-decoration: none; }
+.mobile-proposal .comment-item.is-resolved .comment-text { text-decoration: line-through; text-decoration-thickness: 1px; }
 .mobile-proposal .comment-item.is-resolved { opacity: .7; }
 .mobile-proposal .comment-actions { gap: 8px; }
 .mobile-proposal .comment-actions .btn { font-size: 10px; letter-spacing: .04em; }
@@ -172,7 +170,7 @@
 
 @media (max-width: 820px) {
   .mobile-proposal #view-review { margin-top: 18px; }
-  .mobile-proposal[data-view="review"] .topbar { padding-top: 18px; padding-bottom: 18px; }
+  .mobile-proposal[data-view="review"] .topbar { padding-top: 12px; padding-bottom: 12px; }
   .mobile-proposal[data-view="review"] .status-dot { display: none; }
   .mobile-proposal .meta-grid { margin: 0 0 10px; }
   .mobile-proposal .meta-value { font-size: 20px; letter-spacing: -.025em; }
@@ -188,3 +186,10 @@
   .mobile-proposal .comments .panel-head { padding: 16px 12px; }
   .mobile-proposal .comments-list { padding-bottom: 6px; }
 }
+
+.mobile-proposal .kiru-wordmark { display: flex; align-items: center; gap: 7px; }
+.mobile-proposal .controls :is(#btn-play, #btn-speed-down, #btn-speed-up, #btn-fullscreen) { display: flex; align-items: center; justify-content: center; }
+.mobile-proposal .comment-item { cursor: pointer; }
+.mobile-proposal .comment-item:focus-visible { outline: 1px solid var(--green); outline-offset: -2px; }
+.mobile-proposal .comment-code { font-size: 12px; }
+.mobile-proposal .comment-actions .btn { flex: 1; min-width: 0; }
