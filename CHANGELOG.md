@@ -18,6 +18,7 @@
 
 
 ### Fixed
+- La copia móvil conserva el enlace de importación al abrir y compartir: funciona entre navegadores y al recargar incluso si el almacenamiento local no está disponible. Ocultar acciones cuando una revisión no es válida.
 - Comentarios de prueba por HTTP en la red local: generar IDs con getRandomValues, disponible sin HTTPS, en lugar de randomUUID.
 - R2: cabeceras Content-Range y Content-Length correctas para rangos, sufijos, HEAD y 416.
 - Drive: rechazar respuestas HTML/errores en lugar de presentarlas como MP4.

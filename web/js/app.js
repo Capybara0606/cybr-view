@@ -118,10 +118,16 @@ function applyMeta(project, version) {
 }
 
 function reviewUrl(token) {
-  return `${location.origin}${location.pathname}#/review/${token}`;
+  const url = new URL(location.href);
+  const source = !configured && session.resolveToken(token)?.project.previewSource;
+  url.hash = source ? `#/import/${source}` : `#/review/${token}`;
+  return url.href;
 }
 
 function showDenied(reason) {
+  document.body.dataset.view = 'denied';
+  player.pause();
+  $('review-denied').querySelector('.denied-code').textContent = 'REVIEW ACCESS DENIED';
   $('review-denied').hidden = false;
   $('denied-text').textContent = reason === 'revoked'
     ? '// este enlace de revisión fue REVOCADO por el editor'
@@ -144,6 +150,10 @@ async function openClientReview(token) {
   const res = await session.openReview(token);
   if (!res.ok) return showDenied(res.reason);
 
+  if (!configured && res.project.previewSource) {
+    // Mantiene un enlace que otro navegador puede importar, aunque el almacenamiento local se pierda.
+    history.replaceState(null, '', reviewUrl(token));
+  }
   currentReviewProjectId = res.project.id;
   const ra = $('review-actions');
   if (ra) ra.hidden = !authState;
@@ -417,7 +427,7 @@ async function openPreviewImport(token) {
       const { readReviewSnapshot } = await import('./preview-import.js?v=20261026');
       localToken = session.importReview(token, await readReviewSnapshot(token));
     }
-    if (location.hash === `#/import/${token}`) location.replace(`#/review/${localToken}`);
+    if (location.hash === `#/import/${token}`) await openClientReview(localToken);
   } catch (error) {
     if (location.hash === `#/import/${token}`) {
       $('denied-text').textContent = `${error.message} Recarga para reintentar. La producción no se ha modificado.`;
