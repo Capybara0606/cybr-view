@@ -94,7 +94,7 @@ with sync_playwright() as p:
   # Keyboard timeline navigation.
   page.locator('#video').evaluate('(v)=>v.currentTime=5')
   page.wait_for_function("!document.querySelector('#video').seeking")
-  page.locator('#scrubber').focus();page.locator('#scrubber').press('ArrowRight')
+  page.locator('#seek-range').focus();page.locator('#seek-range').press('ArrowRight')
   page.wait_for_function("Math.abs(document.querySelector('#video').currentTime-10)<.1")
   page.locator('#scrubber').scroll_into_view_if_needed()
   track=page.locator('.scrubber-track').bounding_box()
@@ -104,7 +104,7 @@ with sync_playwright() as p:
   assert hint and hint['x']>=0 and hint['x']+hint['width']<=w
   assert page.evaluate('document.documentElement.scrollWidth')==w
   page.mouse.up()
-  assert float(page.locator('#scrubber').get_attribute('aria-valuemax'))==20
+  assert float(page.locator('#seek-range').get_attribute('max'))==20
   dialog_text=[]
   def approve(dialog):dialog_text.append(dialog.message);dialog.accept()
   page.once('dialog',approve);page.locator('#btn-approve').click()

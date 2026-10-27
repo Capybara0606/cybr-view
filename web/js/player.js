@@ -24,6 +24,8 @@ export function createPlayer({ enhanced = false } = {}) {
   const fallback = document.getElementById('fallback');
   let retryButton = null;
   let playbackStatus = null;
+  let seekInput = null;
+  let seekPreview = null;
   if (enhanced) {
     retryButton = document.createElement('button');
     retryButton.type = 'button'; retryButton.className = 'btn btn-send video-retry';
@@ -36,14 +38,37 @@ export function createPlayer({ enhanced = false } = {}) {
     scrubSetup();
   }
   function scrubSetup() {
-    const slider = document.getElementById('scrubber');
-    slider.setAttribute('role', 'slider'); slider.tabIndex = 0;
-    slider.setAttribute('aria-label', 'Posición del video');
-    slider.setAttribute('aria-valuemin', '0'); slider.setAttribute('aria-valuemax', '0'); slider.setAttribute('aria-valuenow', '0');
-    slider.addEventListener('keydown', (e) => {
+    const container = document.getElementById('scrubber');
+    seekInput = document.createElement('input');
+    seekInput.type = 'range'; seekInput.id = 'seek-range';
+    seekInput.min = '0'; seekInput.max = '0'; seekInput.step = '0.01'; seekInput.value = '0'; seekInput.disabled = true;
+    seekInput.setAttribute('aria-label', 'Posición del video');
+    container.appendChild(seekInput);
+    // El control nativo gestiona los gestos. Durante el arrastre solo se muestra la
+    // posición elegida; se realiza el seek al soltar, sin cancelar lecturas sucesivas en Safari.
+    seekInput.addEventListener('input', () => {
+      dragging = true; seekPreview = Number(seekInput.value);
+      container.classList.add('is-dragging');
+      renderTime(); renderProgress(); showSeekTime(seekPreview);
+    });
+    function commit() {
+      if (seekInput.disabled) return;
+      const target = Number(seekInput.value);
+      dragging = false; seekPreview = null; container.classList.remove('is-dragging');
+      seekTo(target); renderTime(); renderProgress(); hideHover();
+    }
+    seekInput.addEventListener('change', commit);
+    seekInput.addEventListener('pointerup', () => {
+      requestAnimationFrame(() => { if (seekPreview !== null) commit(); });
+    });
+    seekInput.addEventListener('pointercancel', () => {
+      dragging = false; seekPreview = null; container.classList.remove('is-dragging');
+      renderTime(); renderProgress(); hideHover();
+    });
+    seekInput.addEventListener('keydown', (e) => {
       const positions = { ArrowLeft: video.currentTime - 5, ArrowRight: video.currentTime + 5, Home: 0, End: video.duration };
       if (!(e.key in positions)) return;
-      e.preventDefault(); e.stopPropagation(); seekTo(positions[e.key]);
+      e.preventDefault(); e.stopPropagation(); seekTo(positions[e.key]); renderTime(); renderProgress();
     });
   }
   function paintPlayback(text) { if (playbackStatus) playbackStatus.textContent = text; }
@@ -108,7 +133,7 @@ export function createPlayer({ enhanced = false } = {}) {
 
   /* ---------- tiempo ---------- */
   function renderTime() {
-    timeCurrent.textContent = formatTime(video.currentTime);
+    timeCurrent.textContent = formatTime(seekPreview ?? video.currentTime);
     timeTotal.textContent = formatTime(video.duration || 0);
     // indicador técnico fino (HH:MM:SS:FF)
     timeCurrent.title = formatTimecode(video.currentTime, fps);
@@ -116,13 +141,14 @@ export function createPlayer({ enhanced = false } = {}) {
 
   function renderProgress() {
     const dur = video.duration || 0;
-    if (enhanced) {
-      scrubber.setAttribute('aria-valuemax', String(Number.isFinite(dur) ? dur : 0));
-      scrubber.setAttribute('aria-valuenow', String(video.currentTime || 0));
-      scrubber.setAttribute('aria-valuetext', formatTime(video.currentTime));
+    if (seekInput) {
+      const available = Number.isFinite(dur) && dur > 0;
+      seekInput.disabled = !available; seekInput.max = String(available ? dur : 0);
+      if (!dragging) seekInput.value = String(video.currentTime || 0);
+      seekInput.setAttribute('aria-valuetext', formatTime(seekPreview ?? video.currentTime));
     }
     if (dur <= 0) return;
-    const pct = clamp((video.currentTime / dur) * 100, 0, 100);
+    const pct = clamp(((seekPreview ?? video.currentTime) / dur) * 100, 0, 100);
     scrubProgress.style.width = `${pct}%`;
     scrubThumb.style.left = `${pct}%`;
   }
@@ -203,6 +229,9 @@ export function createPlayer({ enhanced = false } = {}) {
     sourceController?.abort();
     sourceController = new AbortController();
     video.pause();
+    dragging = false; seekPreview = null;
+    if (seekInput) { seekInput.disabled = true; seekInput.value = '0'; }
+    scrubber.classList.remove('is-dragging'); hideHover();
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     blobUrl = null;
     currentSource = url || '';
@@ -251,8 +280,13 @@ export function createPlayer({ enhanced = false } = {}) {
     if (video.duration <= 0) return;
     const rect = scrubTrack.getBoundingClientRect();
     const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+    showSeekTime(ratio * video.duration);
+  }
+  function showSeekTime(time) {
+    if (!(video.duration > 0)) return;
+    const ratio = clamp(time / video.duration, 0, 1);
     scrubHover.style.left = enhanced ? `clamp(60px, ${ratio * 100}%, calc(100% - 60px))` : `${ratio * 100}%`;
-    scrubHover.textContent = formatTime(ratio * video.duration);
+    scrubHover.textContent = formatTime(time);
     scrubHover.hidden = false;
   }
   function hideHover() {
@@ -379,7 +413,7 @@ export function createPlayer({ enhanced = false } = {}) {
   video.addEventListener('play', syncPlayLabel);
   video.addEventListener('pause', syncPlayLabel);
   video.addEventListener('timeupdate', () => { renderTime(); renderProgress(); });
-  video.addEventListener('durationchange', () => { renderTime(); buildScale(); renderMarkers(markers); });
+  video.addEventListener('durationchange', () => { renderTime(); renderProgress(); buildScale(); renderMarkers(markers); });
   video.addEventListener('progress', renderBuffer);
   video.addEventListener('loadedmetadata', () => { hideFallback(); clearTimeout(metaTimer); renderProgress(); });
   video.addEventListener('canplay', () => { hideFallback(); paintPlayback(video.paused ? 'Listo para revisar' : 'Reproduciendo'); });
@@ -412,13 +446,14 @@ export function createPlayer({ enhanced = false } = {}) {
   btnSpeedUp.addEventListener('click', () => stepSpeed(1));
   volume.addEventListener('input', syncVolumeUI);
 
-  scrubber.addEventListener('pointerdown', beginDrag);
-  scrubber.addEventListener('pointermove', moveDrag);
-  scrubber.addEventListener('pointerup', endDrag);
-  scrubber.addEventListener('pointercancel', () => { dragging = false; scrubber.classList.remove('is-dragging'); hideHover(); });
-  scrubber.addEventListener('pointerleave', hideHover);
-
-  scrubTrack.addEventListener('click', seekFromEvent);
+  if (!enhanced) {
+    scrubber.addEventListener('pointerdown', beginDrag);
+    scrubber.addEventListener('pointermove', moveDrag);
+    scrubber.addEventListener('pointerup', endDrag);
+    scrubber.addEventListener('pointercancel', () => { dragging = false; scrubber.classList.remove('is-dragging'); hideHover(); });
+    scrubber.addEventListener('pointerleave', hideHover);
+    scrubTrack.addEventListener('click', seekFromEvent);
+  }
 
   /* ---------- init ---------- */
   syncVolumeUI();

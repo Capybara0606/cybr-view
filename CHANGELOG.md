@@ -21,6 +21,7 @@
 
 
 ### Fixed
+- Barra de tiempo de la propuesta: control range nativo de 44px para gestos táctiles, previsualización mientras se arrastra y seek al soltar; sincronización de duración y posición sin interferencias de captura manual de puntero.
 - La copia móvil conserva el enlace de importación al abrir y compartir: funciona entre navegadores y al recargar incluso si el almacenamiento local no está disponible. Ocultar acciones cuando una revisión no es válida.
 - Comentarios de prueba por HTTP en la red local: generar IDs con getRandomValues, disponible sin HTTPS, en lugar de randomUUID.
 - R2: cabeceras Content-Range y Content-Length correctas para rangos, sufijos, HEAD y 416.
