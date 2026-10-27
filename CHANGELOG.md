@@ -10,6 +10,7 @@
 ## [Unreleased] — 2026-10-26
 
 ### Changed
+- Propuesta móvil: frames, velocidad y volumen siempre visibles; se elimina Más/Menos controles y pantalla completa ocupa una fila completa.
 - Propuesta móvil /02: descarga y eliminación en una fila; controles simétricos con saltos de ±5 segundos; volumen más largo con área táctil de 44px.
 
 ### Added

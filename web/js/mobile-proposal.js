@@ -42,25 +42,6 @@ export function initMobileProposal({ player, comments, session }) {
     button.addEventListener('click', () => player.seekBy(delta));
     controls.appendChild(button);
   }
-  const more = document.createElement('button');
-  more.type = 'button';
-  more.className = 'btn mobile-more';
-  more.textContent = 'MÁS CONTROLES';
-  more.setAttribute('aria-expanded', 'false');
-  const advanced = ['.ctrl-frames', '.ctrl-speed', '.ctrl-volume'];
-  more.setAttribute('aria-controls', advanced.map((selector, i) => {
-    const group = controls.querySelector(selector);
-    group.id = `mobile-control-${i}`;
-    return group.id;
-  }).join(' '));
-  more.addEventListener('click', () => {
-    const expanded = more.getAttribute('aria-expanded') !== 'true';
-    more.setAttribute('aria-expanded', String(expanded));
-    controls.classList.toggle('show-advanced', expanded);
-    more.textContent = expanded ? 'MENOS CONTROLES' : 'MÁS CONTROLES';
-  });
-  controls.appendChild(more);
-
   const dock = document.createElement('nav');
   dock.className = 'mobile-review-dock';
   dock.setAttribute('aria-label', 'Acciones de revisión');
