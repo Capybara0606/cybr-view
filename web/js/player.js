@@ -18,10 +18,35 @@ const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
 // velocidades estilo YouTube (L sube · K baja)
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
-export function createPlayer() {
+export function createPlayer({ enhanced = false } = {}) {
   const video = document.getElementById('video');
   const player = document.getElementById('player');
   const fallback = document.getElementById('fallback');
+  let retryButton = null;
+  let playbackStatus = null;
+  if (enhanced) {
+    retryButton = document.createElement('button');
+    retryButton.type = 'button'; retryButton.className = 'btn btn-send video-retry';
+    retryButton.textContent = 'Reintentar'; retryButton.hidden = true;
+    retryButton.addEventListener('click', () => setSource(currentSource, true));
+    fallback.appendChild(retryButton);
+    playbackStatus = document.createElement('span'); playbackStatus.className = 'playback-status';
+    playbackStatus.setAttribute('role', 'status');
+    document.querySelector('.block-head').appendChild(playbackStatus);
+    scrubSetup();
+  }
+  function scrubSetup() {
+    const slider = document.getElementById('scrubber');
+    slider.setAttribute('role', 'slider'); slider.tabIndex = 0;
+    slider.setAttribute('aria-label', 'Posición del video');
+    slider.setAttribute('aria-valuemin', '0'); slider.setAttribute('aria-valuemax', '0'); slider.setAttribute('aria-valuenow', '0');
+    slider.addEventListener('keydown', (e) => {
+      const positions = { ArrowLeft: video.currentTime - 5, ArrowRight: video.currentTime + 5, Home: 0, End: video.duration };
+      if (!(e.key in positions)) return;
+      e.preventDefault(); e.stopPropagation(); seekTo(positions[e.key]);
+    });
+  }
+  function paintPlayback(text) { if (playbackStatus) playbackStatus.textContent = text; }
 
   const btnPlay = document.getElementById('btn-play');
   const btnFrameBack = document.getElementById('btn-frame-back');
@@ -60,7 +85,8 @@ export function createPlayer() {
     if (CONFIG.video.poster) video.poster = CONFIG.video.poster;
   }
 
-  function showFallback(code, text) {
+  function showFallback(code, text, retryable = false) {
+    if (retryButton) retryButton.hidden = !retryable;
     fallback.hidden = false;
     if (code) fallback.querySelector('.fallback-code').textContent = code;
     if (text) fallback.querySelector('.fallback-text').textContent = text;
@@ -71,7 +97,7 @@ export function createPlayer() {
 
   /* ---------- play / pause ---------- */
   function togglePlay() {
-    if (video.paused) video.play().catch(() => {});
+    if (video.paused) playNow();
     else video.pause();
   }
   function syncPlayLabel() {
@@ -90,6 +116,11 @@ export function createPlayer() {
 
   function renderProgress() {
     const dur = video.duration || 0;
+    if (enhanced) {
+      scrubber.setAttribute('aria-valuemax', String(Number.isFinite(dur) ? dur : 0));
+      scrubber.setAttribute('aria-valuenow', String(video.currentTime || 0));
+      scrubber.setAttribute('aria-valuetext', formatTime(video.currentTime));
+    }
     if (dur <= 0) return;
     const pct = clamp((video.currentTime / dur) * 100, 0, 100);
     scrubProgress.style.width = `${pct}%`;
@@ -120,7 +151,12 @@ export function createPlayer() {
     video.pause();
   }
   function playNow() {
-    video.play().catch(() => {});
+    video.play().catch((error) => {
+      if (!enhanced || error.name === 'AbortError') return;
+      if (error.name === 'NotAllowedError') {
+        paintPlayback('Toca Reproducir para iniciar');
+      } else showFallback('LECTURA INTERRUMPIDA', 'No pudimos reproducir el video. Comprueba tu conexión y reintenta.', true);
+    });
   }
   function getTime() {
     return video.currentTime;
@@ -161,8 +197,8 @@ export function createPlayer() {
     }, 6000);
   }
 
-  function setSource(url) {
-    if (url && url === currentSource) return;
+  function setSource(url, force = false) {
+    if (!force && url && url === currentSource) return;
     clearTimeout(metaTimer);
     sourceController?.abort();
     sourceController = new AbortController();
@@ -182,6 +218,7 @@ export function createPlayer() {
       showFallback('SIN VIDEO', 'Esta versión no tiene un video disponible.');
       return;
     }
+    paintPlayback('Cargando · toca Reproducir');
     video.src = url;
     video.load();
     watchForMetadata(url);
@@ -198,9 +235,10 @@ export function createPlayer() {
     scrubber.setPointerCapture?.(e.pointerId);
     scrubber.classList.add('is-dragging');
     seekFromEvent(e);
+    if (enhanced) showHover(e);
   }
   function moveDrag(e) {
-    if (dragging) seekFromEvent(e);
+    if (dragging) { seekFromEvent(e); if (enhanced) showHover(e); }
     else showHover(e);
   }
   function endDrag(e) {
@@ -213,7 +251,7 @@ export function createPlayer() {
     if (video.duration <= 0) return;
     const rect = scrubTrack.getBoundingClientRect();
     const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-    scrubHover.style.left = `${ratio * 100}%`;
+    scrubHover.style.left = enhanced ? `clamp(60px, ${ratio * 100}%, calc(100% - 60px))` : `${ratio * 100}%`;
     scrubHover.textContent = formatTime(ratio * video.duration);
     scrubHover.hidden = false;
   }
@@ -257,19 +295,18 @@ export function createPlayer() {
   /* ---------- fullscreen ---------- */
   function toggleFullscreen() {
     const enter = player.requestFullscreen || player.webkitRequestFullscreen;
-    if (!enter) {
-      // iPhone: solo el <video> puede ir a pantalla completa (player nativo)
-      video.webkitEnterFullscreen?.();
-      return;
-    }
-    if (!document.fullscreenElement) {
-      enter.call(player);
-    } else {
-      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    const full = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      const result = full ? exit?.call(document)
+        : enter ? enter.call(player) : video.webkitEnterFullscreen?.();
+      result?.catch(() => paintPlayback('No se pudo abrir pantalla completa. Vuelve a intentarlo.'));
+    } catch {
+      paintPlayback('No se pudo abrir pantalla completa. Vuelve a intentarlo.');
     }
   }
   function syncFullscreenLabel() {
-    const full = !!document.fullscreenElement;
+    const full = !!(document.fullscreenElement || document.webkitFullscreenElement || video.webkitDisplayingFullscreen);
     btnFullscreen.textContent = full ? 'EXIT' : 'FULLSCREEN';
     btnFullscreen.setAttribute('aria-pressed', String(full));
   }
@@ -344,9 +381,21 @@ export function createPlayer() {
   video.addEventListener('timeupdate', () => { renderTime(); renderProgress(); });
   video.addEventListener('durationchange', () => { renderTime(); buildScale(); renderMarkers(markers); });
   video.addEventListener('progress', renderBuffer);
-  video.addEventListener('loadedmetadata', () => { hideFallback(); clearTimeout(metaTimer); });
-  video.addEventListener('canplay', hideFallback);
-  video.addEventListener('error', () => showFallback('SRC OFFLINE', 'CHECK SOURCE // CORS OR CODEC'));
+  video.addEventListener('loadedmetadata', () => { hideFallback(); clearTimeout(metaTimer); renderProgress(); });
+  video.addEventListener('canplay', () => { hideFallback(); paintPlayback(video.paused ? 'Listo para revisar' : 'Reproduciendo'); });
+  video.addEventListener('playing', () => paintPlayback('Reproduciendo'));
+  video.addEventListener('pause', () => paintPlayback('En pausa'));
+  video.addEventListener('waiting', () => paintPlayback('Cargando video…'));
+  video.addEventListener('stalled', () => paintPlayback('Esperando conexión…'));
+  video.addEventListener('ended', () => paintPlayback('Fin del video'));
+  video.addEventListener('error', () => {
+    if (enhanced) {
+      paintPlayback('Video no disponible');
+      const codec = video.error?.code === 3 || video.error?.code === 4;
+      showFallback(codec ? 'VIDEO NO DISPONIBLE' : 'CONEXIÓN INTERRUMPIDA',
+        codec ? 'No pudimos leer este video. Reintenta o consulta al editor si el problema continúa.' : 'Comprueba tu conexión y vuelve a intentarlo.', true);
+    } else showFallback('SRC OFFLINE', 'CHECK SOURCE // CORS OR CODEC');
+  });
   video.addEventListener('volumechange', syncVolumeUI);
   video.addEventListener('ratechange', syncSpeedUI);
 
@@ -366,7 +415,7 @@ export function createPlayer() {
   scrubber.addEventListener('pointerdown', beginDrag);
   scrubber.addEventListener('pointermove', moveDrag);
   scrubber.addEventListener('pointerup', endDrag);
-  scrubber.addEventListener('pointercancel', endDrag);
+  scrubber.addEventListener('pointercancel', () => { dragging = false; scrubber.classList.remove('is-dragging'); hideHover(); });
   scrubber.addEventListener('pointerleave', hideHover);
 
   scrubTrack.addEventListener('click', seekFromEvent);

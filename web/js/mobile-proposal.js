@@ -1,3 +1,5 @@
+import { initReviewPolish } from './review-polish.js?v=20261026';
+
 /** Propuesta local opt-in: ?mobile=1. No cambia el flujo predeterminado. */
 export function initMobileProposal({ player, comments, session }) {
   if (new URLSearchParams(location.search).get('mobile') !== '1') return;
@@ -6,11 +8,6 @@ export function initMobileProposal({ player, comments, session }) {
   css.rel = 'stylesheet';
   css.href = 'css/mobile-proposal.css?v=20261026';
   document.head.appendChild(css);
-
-  const badge = document.createElement('div');
-  badge.className = 'mobile-proposal-badge';
-  badge.textContent = 'PROPUESTA MÓVIL /02';
-  document.querySelector('.brand').appendChild(badge);
 
   // Conserva los lugares originales al volver al layout de escritorio.
   const actions = document.createElement('div');
@@ -66,4 +63,5 @@ export function initMobileProposal({ player, comments, session }) {
   });
   dock.append(watch, comment);
   document.body.appendChild(dock);
+  initReviewPolish({ player, session });
 }

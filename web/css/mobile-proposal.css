@@ -1,5 +1,5 @@
-/* Propuesta /02: solo se carga con ?mobile=1; escritorio conserva su layout. */
-.mobile-seek, .mobile-project-actions, .mobile-review-dock, .mobile-proposal-badge { display: none; }
+/* Propuesta /03: solo se carga con ?mobile=1; escritorio conserva su layout. */
+.mobile-seek, .mobile-project-actions, .mobile-review-dock { display: none; }
 
 @media (max-width: 820px) {
   .mobile-proposal { --mobile-dock-height: 76px; }
@@ -17,13 +17,6 @@
   .mobile-proposal[data-view="review"] .status-idx,
   .mobile-proposal[data-view="review"] .auth-user,
   .mobile-proposal[data-view="review"] .modbar { display: none; }
-  .mobile-proposal .mobile-proposal-badge {
-    display: block;
-    margin-top: 5px;
-    font: 9px var(--font-mono);
-    letter-spacing: .12em;
-    color: var(--green);
-  }
   .mobile-proposal #view-review > .panel { padding: 0; border: 0; background: transparent; }
   .mobile-proposal #view-review .section-head { display: none; }
   .mobile-proposal .review-grid { gap: 20px; }
@@ -120,4 +113,78 @@
 @media (max-width: 820px) and (orientation: landscape) and (max-height: 500px) {
   .mobile-proposal .player-stage { max-height: 65dvh; }
   .mobile-proposal[data-view="review"] .mobile-review-dock { position: static; }
+}
+
+/* /03 — KIRU y jerarquía de revisión. */
+.mobile-proposal .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mobile-proposal .kiru-header-logo { width: 42px; height: 42px; flex: 0 0 auto; }
+.mobile-proposal .kiru-identity { display: grid; gap: 5px; min-width: 0; }
+.mobile-proposal .kiru-identity strong { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: .14em; }
+.mobile-proposal .kiru-identity > span { font-size: 8px; color: var(--muted); letter-spacing: .08em; }
+.mobile-proposal .kiru-identity .review-preview-tag { color: var(--green); font-size: 8px; }
+.mobile-proposal .review-state { font: 11px var(--font-mono); color: var(--green); display: flex; align-items: center; gap: 8px; }
+.mobile-proposal .review-state::before { content: ''; width: 6px; height: 6px; background: currentColor; }
+.mobile-proposal .review-state[data-status="APPROVED"] { color: var(--green); }
+.mobile-proposal .review-state[data-status="CHANGES_REQUESTED"] { color: var(--text); }
+.mobile-proposal .review-state[data-status="DRAFT"], .mobile-proposal .review-state[data-status="ARCHIVED"] { color: var(--muted); }
+.mobile-proposal .playback-status { font: 9px var(--font-mono); color: var(--muted); text-align: right; }
+.mobile-proposal .block-head { align-items: center; gap: 8px; }
+.mobile-proposal .block-tech { display: none; }
+.mobile-proposal .review-manage { position: relative; width: 100%; }
+.mobile-proposal .review-manage summary { list-style: none; cursor: pointer; border: 1px solid var(--border); min-height: 44px; display: flex; align-items: center; justify-content: center; font: 11px var(--font-mono); color: var(--muted); }
+.mobile-proposal .review-manage summary::-webkit-details-marker { display: none; }
+.mobile-proposal .review-manage[open] summary { border-color: var(--muted); }
+.mobile-proposal .review-manage #btn-delete-project-review { margin-top: 8px; border-color: var(--danger); color: var(--danger); }
+.mobile-proposal .review-manage:focus-within summary { border-color: var(--green); }
+.mobile-proposal .comment-filters { display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
+.mobile-proposal .comment-filters .btn { flex: 1; font-size: 10px; }
+.mobile-proposal .comment-filters [aria-pressed="true"] { border-color: var(--green); color: var(--green); background: rgba(29,185,84,.06); }
+.mobile-proposal .comment-item { border-left: 2px solid transparent; padding: 16px 12px; }
+.mobile-proposal .comment-item.is-active { border-left-color: var(--green); }
+.mobile-proposal .comment-item.is-reply { margin-left: 20px; border-left-color: var(--border); padding-left: 12px; background: rgba(255,255,255,.015); }
+.mobile-proposal .comment-head { align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.mobile-proposal button.comment-code { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border); font-size: 12px; }
+.mobile-proposal .comment-status { font-size: 9px; letter-spacing: .04em; }
+.mobile-proposal .comment-text { font-size: 15px; line-height: 1.65; margin: 0 0 10px; white-space: pre-wrap; }
+.mobile-proposal .comment-item.is-resolved .comment-text { text-decoration: none; }
+.mobile-proposal .comment-item.is-resolved { opacity: .7; }
+.mobile-proposal .comment-actions { gap: 8px; }
+.mobile-proposal .comment-actions .btn { font-size: 10px; letter-spacing: .04em; }
+.mobile-proposal .comment-meta { font-size: 10px; text-transform: none; letter-spacing: .02em; }
+.mobile-proposal .comment-feedback { font-size: 12px; line-height: 1.5; color: var(--green); margin: 8px 0 0; }
+.mobile-proposal .comment-feedback:empty { display: none; }
+.mobile-proposal .composer-code { font-size: 11px; color: var(--green); letter-spacing: 0; }
+.mobile-proposal .composer { padding: 14px 12px; }
+.mobile-proposal .composer-foot { gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+.mobile-proposal .composer-head { flex-wrap: wrap; }
+.mobile-proposal .video-retry { margin-top: 16px; }
+.mobile-proposal .stage-fallback { padding: 20px; text-align: center; }
+.mobile-proposal .fallback-code { font-size: 16px; }
+.mobile-proposal .fallback-text { font-size: 12px; max-width: 32ch; line-height: 1.6; letter-spacing: .02em; }
+.mobile-proposal .scrubber-hover { font-size: 13px; padding: 8px 10px; border: 1px solid var(--green); background: var(--bg); color: var(--text); z-index: 3; }
+.mobile-proposal .scrubber { touch-action: none; }
+.mobile-proposal .scrubber-thumb { width: 14px; height: 14px; }
+.mobile-proposal .marker { width: 24px; height: 32px; top: -8px; background: transparent; }
+.mobile-proposal .marker::before { content: ''; position: absolute; width: 3px; height: 14px; left: 50%; top: 8px; transform: translateX(-50%); background: var(--green); }
+.mobile-proposal .marker.is-active::before { background: var(--text); height: 20px; top: 5px; }
+.mobile-proposal .marker.is-active::after { display: none; }
+.mobile-proposal .marker.is-resolved::before { background: var(--muted); }
+
+@media (max-width: 820px) {
+  .mobile-proposal #view-review { margin-top: 18px; }
+  .mobile-proposal[data-view="review"] .topbar { padding-top: 18px; padding-bottom: 18px; }
+  .mobile-proposal[data-view="review"] .status-dot { display: none; }
+  .mobile-proposal .meta-grid { margin: 0 0 10px; }
+  .mobile-proposal .meta-value { font-size: 20px; letter-spacing: -.025em; }
+  .mobile-proposal .review-state { order: 0; padding-bottom: 16px; }
+  .mobile-proposal .controls .btn { font-size: 10px; letter-spacing: .02em; padding-inline: 6px; }
+  .mobile-proposal #btn-play { background: var(--green); color: var(--bg) !important; font-weight: 700; }
+  .mobile-proposal .ctrl-volume #btn-mute { flex-basis: 76px; }
+  .mobile-proposal .comments-nav .btn { font-size: 10px; letter-spacing: .02em; }
+  .mobile-proposal .scrubber { min-height: 44px; }
+  .mobile-proposal .approve-bar { padding: 14px 12px; border-color: var(--border); background: var(--surface); }
+  .mobile-proposal .approve-label { font-family: var(--font-ui); font-size: 12px; text-transform: none; letter-spacing: 0; }
+  .mobile-proposal .approve-bar .btn { color: var(--green); background: transparent; }
+  .mobile-proposal .comments .panel-head { padding: 16px 12px; }
+  .mobile-proposal .comments-list { padding-bottom: 6px; }
 }

@@ -6,6 +6,7 @@
 import { initMobileProposal } from './mobile-proposal.js?v=20261026';
 import { createPlayer } from './player.js?v=20261026';
 import { createSession } from './session.js?v=20261026';
+import { createReviewComments } from './review-comments.js?v=20261026';
 import { createComments } from './comments.js?v=20261026';
 import { CONFIG } from './config.js?v=20261026';
 import { configured } from './firebase.js?v=20261026';
@@ -364,7 +365,12 @@ function renderDashboard() {
 function wireApprove() {
   const btn = $('btn-approve');
   btn?.addEventListener('click', () => {
-    if (!window.confirm('Approve this version?')) return;
+    const project = session.getProject();
+    const version = session.getVersion();
+    const message = enhancedReview
+      ? `¿Aprobar ${version?.name || 'esta versión'} de ${project?.name || 'este proyecto'}? Confirmas que está lista para entrega.`
+      : 'Approve this version?';
+    if (!window.confirm(message)) return;
     const res = session.approveActive('Client');
     if (res?.ok) {
       applyMeta(session.getProject(), session.getVersion());
@@ -457,9 +463,12 @@ function wireNav() {
 }
 
 /* ---------- boot ---------- */
-player = createPlayer();
+const enhancedReview = new URLSearchParams(location.search).get('mobile') === '1';
+player = createPlayer({ enhanced: enhancedReview });
 session = createSession();
-comments = createComments({ store: session, player, canDelete: false });
+comments = enhancedReview
+  ? createReviewComments({ store: session, player })
+  : createComments({ store: session, player, canDelete: false });
 
 initMobileProposal({ player, comments, session });
 

@@ -10,6 +10,7 @@
 ## [Unreleased] — 2026-10-26
 
 ### Changed
+- Propuesta /03: KIRU como marca principal de cabecera, estado de revisión legible, controles en español, respuestas agrupadas y filtro de pendientes. Confirmación de envío con tiempo fijo por borrador/respuesta, gestión de eliminación solo para editor, aprobación con nombre de proyecto/versión y reintento de errores de video. Línea de tiempo con área táctil mayor, tiempo ampliado y navegación por teclado.
 - Propuesta móvil: frames, velocidad y volumen siempre visibles; se elimina Más/Menos controles y pantalla completa ocupa una fila completa.
 - Propuesta móvil /02: descarga y eliminación en una fila; controles simétricos con saltos de ±5 segundos; volumen más largo con área táctil de 44px.
 
