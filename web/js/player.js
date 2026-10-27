@@ -385,6 +385,7 @@ export function createPlayer() {
     setActiveMarker,
     set onMarkerChange(fn) { onMarkerChange = fn; },
     seekTo,
+    seekBy,
     pause: pauseNow,
     play: playNow,
     getTime,

@@ -9,10 +9,39 @@ export function initMobileProposal({ player, comments, session }) {
 
   const badge = document.createElement('div');
   badge.className = 'mobile-proposal-badge';
-  badge.textContent = 'PROPUESTA MÓVIL /01';
+  badge.textContent = 'PROPUESTA MÓVIL /02';
   document.querySelector('.brand').appendChild(badge);
 
+  // Conserva los lugares originales al volver al layout de escritorio.
+  const actions = document.createElement('div');
+  actions.className = 'mobile-project-actions';
+  const actionNodes = ['download-bar', 'review-actions'].map((id) => {
+    const node = document.getElementById(id);
+    const anchor = document.createComment(`original-${id}`);
+    node.before(anchor);
+    return { node, anchor };
+  });
+  document.querySelector('.review-main').appendChild(actions);
+  const mobile = matchMedia('(max-width: 820px)');
+  function placeActions() {
+    actionNodes.forEach(({ node, anchor }) => {
+      if (mobile.matches) actions.appendChild(node);
+      else anchor.after(node);
+    });
+  }
+  mobile.addEventListener('change', placeActions);
+  placeActions();
+
   const controls = document.querySelector('.controls');
+  for (const delta of [-5, 5]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `btn mobile-seek mobile-seek-${delta < 0 ? 'back' : 'forward'}`;
+    button.textContent = delta < 0 ? '−5 S' : '+5 S';
+    button.setAttribute('aria-label', delta < 0 ? 'Retroceder 5 segundos' : 'Adelantar 5 segundos');
+    button.addEventListener('click', () => player.seekBy(delta));
+    controls.appendChild(button);
+  }
   const more = document.createElement('button');
   more.type = 'button';
   more.className = 'btn mobile-more';
