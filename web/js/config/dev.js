@@ -8,7 +8,7 @@ export default {
     product: 'CYBR VIEW',
     company: 'KIRU',
     tagline: 'VIDEO REVIEW // SYSTEM',
-    version: '0.9.0',
+    version: '0.11.0',
   },
 
   meta: { project: 'MULTIMONEY', version: 'V01', status: 'SENT_FOR_REVIEW', fps: 25 },

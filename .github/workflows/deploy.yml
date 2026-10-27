@@ -27,6 +27,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test video delivery and review imports
+        run: node --test tests/*.test.mjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -40,3 +48,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify published frontend
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "${PAGE_URL}?release=20261027-release1" -o /tmp/published-index.html
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          assert '20261027-release1' in Path('/tmp/published-index.html').read_text(), 'Published HTML does not match this release'
+          PYCODE
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 "${PAGE_URL}js/app.js?v=20261027-release1" -o /tmp/published-app.js
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          assert 'const enhancedReview = true;' in Path('/tmp/published-app.js').read_text(), 'New default review UI is missing'
+          PYCODE
+          echo "Frontend verified at ${PAGE_URL}" >> "$GITHUB_STEP_SUMMARY"

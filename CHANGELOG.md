@@ -7,27 +7,23 @@
 
 ---
 
-## [Unreleased] — 2026-10-26
+## [0.11.0] — 2026-10-26
 
 ### Changed
-- Propuesta /04: marca KIRU compacta y alineada; tocar la tarjeta vuelve al tiempo del comentario; tachado de resueltos, edición sin cambiar timecode y eliminación con confirmación. Se retiran respuestas nuevas y se simplifican los controles con iconos y MUTE.
-- Propuesta /03: KIRU como marca principal de cabecera, estado de revisión legible, controles en español, respuestas agrupadas y filtro de pendientes. Confirmación de envío con tiempo fijo por borrador/respuesta, gestión de eliminación solo para editor, aprobación con nombre de proyecto/versión y reintento de errores de video. Línea de tiempo con área táctil mayor, tiempo ampliado y navegación por teclado.
-- Propuesta móvil: frames, velocidad y volumen siempre visibles; se elimina Más/Menos controles y pantalla completa ocupa una fila completa.
-- Propuesta móvil /02: descarga y eliminación en una fila; controles simétricos con saltos de ±5 segundos; volumen más largo con área táctil de 44px.
-
-### Added
-- Copia de una revisión existente mediante `?env=dev&mobile=1#/import/TOKEN`: lectura del video y comentarios, nuevo token local y persistencia separada sin escrituras a Firebase.
-- Propuesta móvil opt-in con `?mobile=1`: video 16:9, controles táctiles de 44px, controles avanzados desplegables y accesos a video/comentarios. Sin cambiar el layout predeterminado ni el de escritorio.
-
+- Publicación de la interfaz aprobada como predeterminada: marca KIRU compacta, layout móvil 16:9, controles visibles con iconos, saltos de ±5 segundos y volumen ampliado.
+- Comentarios: tocar la tarjeta vuelve al tiempo correspondiente; filtro de pendientes, tachado de resueltos, edición que conserva timecode y eliminación con confirmación. Se conservan comentarios y respuestas históricos; ya no se crean respuestas.
+- Gestión del proyecto reservada al editor. Aprobación con confirmación de proyecto y versión, y feedback del guardado.
 
 ### Fixed
-- Barra de tiempo de la propuesta: control range nativo de 44px para gestos táctiles, previsualización mientras se arrastra y seek al soltar; sincronización de duración y posición sin interferencias de captura manual de puntero.
-- La copia móvil conserva el enlace de importación al abrir y compartir: funciona entre navegadores y al recargar incluso si el almacenamiento local no está disponible. Ocultar acciones cuando una revisión no es válida.
-- Comentarios de prueba por HTTP en la red local: generar IDs con getRandomValues, disponible sin HTTPS, en lugar de randomUUID.
-- R2: cabeceras Content-Range y Content-Length correctas para rangos, sufijos, HEAD y 416.
-- Drive: rechazar respuestas HTML/errores en lugar de presentarlas como MP4.
-- Descarga del proxy por navegación nativa con Content-Disposition attachment, sin Blob ni ventanas asíncronas. Fuentes externas se abren con instrucciones para guardar.
-- Al cambiar a una versión sin video se limpia la fuente anterior. Se cancelan fallbacks pendientes y se liberan URLs Blob al cambiar de versión; límite de fallback de 160 MB.
+- Barra táctil con range nativo: previsualizar al arrastrar y buscar al soltar, sin captura manual de gestos en Safari.
+- Las operaciones remotas esperan confirmación de Firebase; los fallos conservan el texto y no se presentan como guardados. La aprobación se recupera al recargar y se rechazan enlaces revocados.
+- Correcciones del Worker: cabeceras Range/Content-Length, HEAD/416, descarga como attachment y rechazo de páginas HTML de Drive. El Worker se despliega por separado de GitHub Pages.
+- Al cambiar de video se cancelan fallbacks pendientes, se limpia la fuente vacía y se liberan URLs Blob. Errores de reproducción con reintento.
+- Enlaces de importación de prueba portables entre navegadores, separados de producción.
+
+### Deployment
+- GitHub Pages valida tests y archivos publicados antes de confirmar la versión web.
+- Flujo independiente para desplegar el Worker con CLOUDFLARE_API_TOKEN; informa explícitamente si la credencial está ausente.
 
 ## [Unreleased] — 2026-10-25
 

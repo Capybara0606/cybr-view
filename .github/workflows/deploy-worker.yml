@@ -1,0 +1,60 @@
+name: Deploy video Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Cloudflare credential availability
+        id: credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Video Worker was not deployed: CLOUDFLARE_API_TOKEN is not configured in repository secrets."
+            echo "Worker deployment blocked: add CLOUDFLARE_API_TOKEN to repository Actions secrets and run this workflow again. No changes were made to the live Worker." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Set up Node.js
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Deploy Worker
+        if: steps.credentials.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then unset CLOUDFLARE_ACCOUNT_ID; fi
+          npx --yes wrangler@4.45.0 deploy --config deploy/worker/wrangler.toml
+
+      - name: Verify live Worker version
+        if: steps.credentials.outputs.ready == 'true'
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 -X OPTIONS -D /tmp/worker-headers.txt -o /dev/null https://cybr-view-proxy.j-anibal640-0.workers.dev/
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          assert 'x-cybr-video-version: 20261027-release1' in Path('/tmp/worker-headers.txt').read_text().lower(), 'Worker version was not confirmed'
+          PYCODE
+          echo "Worker deployed and version verified." >> "$GITHUB_STEP_SUMMARY"

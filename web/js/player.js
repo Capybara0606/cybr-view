@@ -3,8 +3,8 @@
  * Controla <video> con UI custom (play/pause, seek, frame, volumen, fullscreen)
  * y una timeline preparada para markers (FASE 3). Solo Vanilla JS.
  */
-import { CONFIG } from './config.js?v=20261026';
-import { formatTime, formatTimecode, formatCode } from './time.js?v=20261026';
+import { CONFIG } from './config.js?v=20261027-release1';
+import { formatTime, formatTimecode, formatCode } from './time.js?v=20261027-release1';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 

@@ -8,8 +8,10 @@ export function initReviewPolish({ player, session }) {
   const product = document.createElement('span'); product.textContent = 'CYBR VIEW / REVISIÓN DE VIDEO';
   const wordmark = document.createElement('div'); wordmark.className = 'kiru-wordmark';
   wordmark.append(logo, name); identity.append(wordmark, product); brand.append(identity);
-  const badge = document.createElement('span'); badge.className = 'review-preview-tag'; badge.textContent = 'PROPUESTA /04';
-  identity.append(badge);
+  if (!session.isRemote) {
+    const badge = document.createElement('span'); badge.className = 'review-preview-tag'; badge.textContent = 'MODO LOCAL';
+    identity.append(badge);
+  }
 
   document.querySelector('.comments .panel-name').textContent = 'COMENTARIOS';
   document.querySelector('.composer-label').textContent = 'TU OBSERVACIÓN';
@@ -47,6 +49,10 @@ export function initReviewPolish({ player, session }) {
     document.querySelector('.approve-label').textContent = '¿Todo listo para entregar?';
   }
   session.onSelect(paint); paint({ version: session.getVersion() });
+  const feedback = document.createElement('p'); feedback.id = 'review-action-feedback';
+  feedback.className = 'review-action-feedback'; feedback.setAttribute('role', 'status');
+  state.after(feedback);
+  session.onSelect(() => { feedback.textContent = ''; });
 
   const syncPlay = () => icon($('btn-play'), player.video.paused ? 'M7 3v18l15-9z' : 'M5 3h5v18H5zm9 0h5v18h-5z', player.video.paused ? 'Reproducir' : 'Pausar');
   const syncMute = () => {

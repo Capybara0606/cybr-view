@@ -165,3 +165,14 @@ CYBR VIEW <video>  (play + seek + timecode)
 - Carga inicial ligera: Vanilla JS + CSS, sin frameworks. El SDK de Firebase se carga por
   CDN (esm.sh) solo cuando se importa (config con credenciales).
 - Ícono (favicon) inline SVG, sin peticiones externas.
+
+
+## Publicación web y Worker (0.11.0)
+
+La interfaz aprobada es predeterminada; los enlaces existentes `#/review/TOKEN` conservan Firebase como backend. `?env=dev` sirve únicamente para pruebas locales, e importar una revisión a DEV no modifica producción.
+
+Al publicar en `main`, `deploy.yml` ejecuta las pruebas de Node, publica `web/` en GitHub Pages y comprueba la versión publicada. El Worker no se publica mediante Pages.
+
+`deploy-worker.yml` publica `deploy/worker/worker.js` con Wrangler 4.45.0 si existe el secreto de Actions `CLOUDFLARE_API_TOKEN` con permiso de edición del Worker de la cuenta. Puede indicarse también `CLOUDFLARE_ACCOUNT_ID` si es necesario seleccionar la cuenta. Los valores se añaden en Settings → Secrets and variables → Actions, nunca en el código ni en el chat. Tras añadirlos, ejecutar manualmente “Deploy video Worker”. Si falta el token, el flujo lo informa y deja el Worker sin modificar.
+
+Para confirmar el Worker publicado, OPTIONS debe devolver `x-cybr-video-version: 20261027-release1`; el flujo lo verifica tras el despliegue. Publicar únicamente la web no demuestra que las correcciones de descarga/streaming del Worker estén activas.

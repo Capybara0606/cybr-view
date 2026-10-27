@@ -23,11 +23,12 @@ const MAX_VIDEO_SIZE_MB = 160;
 const MAX_VIDEO_SIZE = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 
 const cors = () => ({
+  'x-cybr-video-version': '20261027-release1',
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,HEAD,PUT,POST,OPTIONS',
   'access-control-allow-headers': 'range,content-type,content-length',
   'access-control-max-age': '86400',
-  'access-control-expose-headers': 'content-range,content-length,content-disposition',
+  'access-control-expose-headers': 'content-range,content-length,content-disposition,x-cybr-video-version',
 });
 
 const err = (msg, status = 400) => new Response(JSON.stringify({ error: msg }), {

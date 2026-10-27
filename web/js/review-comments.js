@@ -1,4 +1,4 @@
-import { formatCode } from './time.js?v=20261026';
+import { formatCode } from './time.js?v=20261027-release1';
 
 export function createReviewComments({ store, player }) {
   const listEl = document.getElementById('comments-list');
@@ -62,7 +62,7 @@ export function createReviewComments({ store, player }) {
       pending = false;
       if (editingId === c.id) finishEdit();
       if (activeId === c.id) activeId = null;
-      feedback.textContent = 'Comentario eliminado de esta copia de prueba.'; render();
+      feedback.textContent = store.isRemote ? 'Comentario eliminado.' : 'Comentario eliminado de esta copia de prueba.'; render();
     } catch { feedback.textContent = 'No pudimos eliminar el comentario. Reintenta.'; }
     finally { pending = false; }
   }
@@ -81,7 +81,7 @@ export function createReviewComments({ store, player }) {
       if (edited) finishEdit();
       else { composer.value = ''; capturedTime = null; }
       filter = 'all'; select(id, false); updateCode();
-      feedback.textContent = edited ? 'Comentario actualizado. Se conserva su tiempo original.' : 'Comentario añadido a esta copia de prueba.';
+      feedback.textContent = edited ? 'Comentario actualizado. Se conserva su tiempo original.' : (store.isRemote ? 'Comentario guardado.' : 'Comentario añadido a esta copia de prueba.');
     } catch { feedback.textContent = 'No pudimos guardar el comentario. Tu texto sigue aquí para reintentar.'; }
     finally { pending = false; send.disabled = false; cancel.disabled = false; }
   }
@@ -101,8 +101,12 @@ export function createReviewComments({ store, player }) {
     const text = document.createElement('p'); text.className = 'comment-text'; text.textContent = c.body;
     const meta = document.createElement('div'); meta.className = 'comment-meta'; meta.textContent = c.authorName || 'Invitado';
     const actions = document.createElement('div'); actions.className = 'comment-actions';
-    actions.append(button(c.status === 'resolved' ? 'Reabrir' : '✓ Resolver', () => {
-      if (!pending) store.setStatus(c.id, c.status === 'resolved' ? 'open' : 'resolved');
+    actions.append(button(c.status === 'resolved' ? 'Reabrir' : '✓ Resolver', async () => {
+      if (pending) return;
+      pending = true;
+      try { await store.setStatus(c.id, c.status === 'resolved' ? 'open' : 'resolved'); }
+      catch { feedback.textContent = 'No pudimos guardar el estado del comentario. Reintenta.'; }
+      finally { pending = false; }
     }), button('Editar', () => edit(c)), button('Eliminar', () => remove(c), 'btn btn-ghost btn-danger'));
     item.append(head, text, meta, actions); return item;
   }

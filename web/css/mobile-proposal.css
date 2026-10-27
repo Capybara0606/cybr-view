@@ -1,4 +1,4 @@
-/* Propuesta /04: solo se carga con ?mobile=1; escritorio conserva su layout. */
+/* Interfaz adaptable de revisión; distribución móvil hasta 820px. */
 .mobile-seek, .mobile-project-actions, .mobile-review-dock { display: none; }
 
 @media (max-width: 820px) {
@@ -205,3 +205,8 @@
 .mobile-proposal .scrubber:focus-within { outline: 1px solid var(--green); outline-offset: 3px; }
 .mobile-proposal .scrubber-thumb { width: 20px; height: 20px; }
 .mobile-proposal .marker-lane { border-top: 0; }
+
+.mobile-proposal .review-action-feedback { order: 0; color: var(--green); font-size: 12px; margin: 0 0 12px; }
+.mobile-proposal .review-action-feedback:empty { display: none; }
+.mobile-proposal .review-action-feedback[data-error="true"] { color: var(--danger); }
+.mobile-proposal .btn:disabled { opacity: .5; cursor: wait; }

@@ -4,16 +4,16 @@
  * Comentarios: Firebase RTDB (realtime) si está configurado; localStorage si no.
  * Expone una "tienda" que consume el panel /comments (subscribe/add/setStatus/remove).
  */
-import { defaultData, load, save, refreshVideoUrls, findByToken, generateToken, normalizeVideoUrl } from './data.js?v=20261026';
+import { defaultData, load, save, refreshVideoUrls, findByToken, generateToken, normalizeVideoUrl } from './data.js?v=20261027-release1';
 import {
   configured,
   listenComments, createComment, updateComment, deleteComment,
-  onConnection, setReviewToken, getReviewToken, setReviewApproval,
+  onConnection, setReviewToken, getReviewToken, getReviewApproval, setReviewApproval,
   createProject as fbCreateProject, createVersion as fbCreateVersion,
   updateVersion as fbUpdateVersion, updateProject as fbUpdateProject, deleteProject as fbDeleteProject,
   listenProjects, seedIfEmpty, cleanupBrokenVersions,
-} from './firebase.js?v=20261026';
-import { canTransition } from './status.js?v=20261026';
+} from './firebase.js?v=20261027-release1';
+import { canTransition } from './status.js?v=20261027-release1';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
 
@@ -360,14 +360,14 @@ export function createSession() {
     return { ok: false, reason: 'NOT_FOUND' };
   }
 
-  function approveActive(author) {
+  async function approveActive(author) {
     if (useRemote && remoteVersion) {
       const now = Date.now();
+      await setReviewApproval(remoteVersion.accessToken, { approvedAt: now, approvedBy: author, reviewId: remoteVersion.accessToken });
       remoteVersion.status = 'APPROVED';
       remoteVersion.approvedAt = now;
       remoteVersion.approvedBy = author;
       remoteVersion.reviewId = remoteVersion.accessToken;
-      setReviewApproval(remoteVersion.accessToken, { approvedAt: now, approvedBy: author, reviewId: remoteVersion.accessToken }).catch(() => {});
       notifySelect();
       return { ok: true, version: remoteVersion };
     }
@@ -379,11 +379,13 @@ export function createSession() {
     if (useRemote) {
       const node = await getReviewToken(token).catch(() => null);
       if (!node) return { ok: false, reason: 'invalid' };
+      if (node.status !== 'active') return { ok: false, reason: 'revoked' };
+      const approval = await getReviewApproval(token).catch(() => null);
       remoteProject = { id: node.projectId, name: node.projectName };
       remoteVersion = {
         id: node.versionId, name: node.versionName, videoUrl: node.videoUrl,
-        fps: node.fps, status: node.reviewStatus || 'SENT_FOR_REVIEW',
-        accessToken: token, approvedAt: node.approvedAt || null, approvedBy: node.approvedBy || null,
+        fps: node.fps, status: approval?.approvedAt ? 'APPROVED' : (node.reviewStatus || 'SENT_FOR_REVIEW'),
+        accessToken: token, approvedAt: approval?.approvedAt || node.approvedAt || null, approvedBy: approval?.approvedBy || node.approvedBy || null,
       };
       projectId = node.projectId;
       versionId = node.versionId;
@@ -434,6 +436,7 @@ export function createSession() {
   attach();
 
   return {
+    isRemote: useRemote,
     getProjects: () => tree,
     getProject: currentProject,
     getVersion: currentVersion,
@@ -470,8 +473,7 @@ export function createSession() {
 
     async add(data) {
       if (useRemote) {
-        try { await createComment(tok(), data); }
-        catch { localMutate((v) => { v.comments = [data, ...v.comments]; }); }
+        await createComment(tok(), data);
         optimisticAdd(data);
       } else {
         localMutate((v) => { v.comments = [data, ...v.comments]; });
@@ -483,8 +485,7 @@ export function createSession() {
     async setStatus(id, status) {
       const patch = { status, updatedAt: Date.now() };
       if (useRemote) {
-        try { await updateComment(tok(), id, patch); }
-        catch { localMutate((v) => { v.comments = v.comments.map((c) => (c.id === id ? { ...c, ...patch } : c)); }); }
+        await updateComment(tok(), id, patch);
         optimisticPatch(id, patch);
       } else {
         localMutate((v) => { v.comments = v.comments.map((c) => (c.id === id ? { ...c, ...patch } : c)); });
@@ -509,8 +510,7 @@ export function createSession() {
     },
     async remove(id) {
       if (useRemote) {
-        try { await deleteComment(tok(), id); }
-        catch { localMutate((v) => { v.comments = v.comments.filter((c) => c.id !== id); }); }
+        await deleteComment(tok(), id);
         optimisticRemove(id);
       } else {
         localMutate((v) => { v.comments = v.comments.filter((c) => c.id !== id); });

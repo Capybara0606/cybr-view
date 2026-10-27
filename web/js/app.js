@@ -3,16 +3,15 @@
  * Rutas (hash): #/login · #/dashboard (solo editor autenticado) · #/review/:token (cliente).
  * El cliente NO necesita cuenta; accede por un review token. El editor usa Firebase Auth.
  */
-import { initMobileProposal } from './mobile-proposal.js?v=20261026';
-import { createPlayer } from './player.js?v=20261026';
-import { createSession } from './session.js?v=20261026';
-import { createReviewComments } from './review-comments.js?v=20261026';
-import { createComments } from './comments.js?v=20261026';
-import { CONFIG } from './config.js?v=20261026';
-import { configured } from './firebase.js?v=20261026';
-import { signIn, signOut, onAuth } from './auth.js?v=20261026';
-import { canTransition } from './status.js?v=20261026';
-import { normalizeVideoUrl, VIDEO_PROXY_BASE } from './data.js?v=20261026';
+import { initMobileProposal } from './mobile-proposal.js?v=20261027-release1';
+import { createPlayer } from './player.js?v=20261027-release1';
+import { createSession } from './session.js?v=20261027-release1';
+import { createReviewComments } from './review-comments.js?v=20261027-release1';
+import { CONFIG } from './config.js?v=20261027-release1';
+import { configured } from './firebase.js?v=20261027-release1';
+import { signIn, signOut, onAuth } from './auth.js?v=20261027-release1';
+import { canTransition } from './status.js?v=20261027-release1';
+import { normalizeVideoUrl, VIDEO_PROXY_BASE } from './data.js?v=20261027-release1';
 
 const setText = (sel, val) => {
   const el = document.querySelector(sel);
@@ -364,17 +363,23 @@ function renderDashboard() {
 
 function wireApprove() {
   const btn = $('btn-approve');
-  btn?.addEventListener('click', () => {
+  btn?.addEventListener('click', async () => {
+    if (btn.disabled) return;
     const project = session.getProject();
     const version = session.getVersion();
-    const message = enhancedReview
-      ? `¿Aprobar ${version?.name || 'esta versión'} de ${project?.name || 'este proyecto'}? Confirmas que está lista para entrega.`
-      : 'Approve this version?';
-    if (!window.confirm(message)) return;
-    const res = session.approveActive('Client');
-    if (res?.ok) {
+    if (!window.confirm(`¿Aprobar ${version?.name || 'esta versión'} de ${project?.name || 'este proyecto'}? Confirmas que está lista para entrega.`)) return;
+    const feedback = $('review-action-feedback');
+    btn.disabled = true;
+    try {
+      const res = await session.approveActive('Client');
+      if (!res?.ok) throw new Error('APPROVAL_FAILED');
       applyMeta(session.getProject(), session.getVersion());
-    }
+      feedback.textContent = 'Versión aprobada. Gracias por tu revisión.';
+      feedback.dataset.error = 'false';
+    } catch {
+      feedback.textContent = 'No pudimos guardar la aprobación. Comprueba tu conexión y reintenta.';
+      feedback.dataset.error = 'true';
+    } finally { btn.disabled = false; }
   });
 }
 
@@ -430,7 +435,7 @@ async function openPreviewImport(token) {
   try {
     let localToken = session.findImportedReview(token);
     if (!localToken) {
-      const { readReviewSnapshot } = await import('./preview-import.js?v=20261026');
+      const { readReviewSnapshot } = await import('./preview-import.js?v=20261027-release1');
       localToken = session.importReview(token, await readReviewSnapshot(token));
     }
     if (location.hash === `#/import/${token}`) await openClientReview(localToken);
@@ -463,12 +468,10 @@ function wireNav() {
 }
 
 /* ---------- boot ---------- */
-const enhancedReview = new URLSearchParams(location.search).get('mobile') === '1';
+const enhancedReview = true;
 player = createPlayer({ enhanced: enhancedReview });
 session = createSession();
-comments = enhancedReview
-  ? createReviewComments({ store: session, player })
-  : createComments({ store: session, player, canDelete: false });
+comments = createReviewComments({ store: session, player });
 
 initMobileProposal({ player, comments, session });
 

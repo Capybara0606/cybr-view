@@ -5,7 +5,7 @@
  *
  * Estructura: cybrview/v1/projects/{projectId}/versions/{versionId}/comments/{commentId}
  */
-import { CONFIG } from './config.js?v=20261026';
+import { CONFIG } from './config.js?v=20261027-release1';
 
 const fireConfig = CONFIG.firebase || {};
 
@@ -84,6 +84,12 @@ export async function setReviewToken(token, data) {
 export async function getReviewToken(token) {
   const d = await db();
   const snap = await d.ref(tokenPath(token)).once('value');
+  return snap.val();
+}
+
+export async function getReviewApproval(token) {
+  const d = await db();
+  const snap = await d.ref(`cybrview/v1/reviews/${token}/approval`).once('value');
   return snap.val();
 }
 

@@ -1,12 +1,11 @@
-import { initReviewPolish } from './review-polish.js?v=20261026';
+import { initReviewPolish } from './review-polish.js?v=20261027-release1';
 
-/** Propuesta local opt-in: ?mobile=1. No cambia el flujo predeterminado. */
+/** Interfaz de revisión adaptable para móvil y escritorio. */
 export function initMobileProposal({ player, comments, session }) {
-  if (new URLSearchParams(location.search).get('mobile') !== '1') return;
   document.body.classList.add('mobile-proposal');
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = 'css/mobile-proposal.css?v=20261026';
+  css.href = 'css/mobile-proposal.css?v=20261027-release1';
   document.head.appendChild(css);
 
   // Conserva los lugares originales al volver al layout de escritorio.
