@@ -320,3 +320,12 @@ el marcador correspondiente se elimina.
 
 **En todos los casos:** el estado final en Firebase es consistente en todos los clientes.
 No hay estados parciales ni datos fantasma.
+
+### Navegación de versiones para invitados
+
+`tokens/{token}/versions` es la proyección pública mínima de versiones compartidas
+del mismo proyecto (ADR de 2026-10-29 en `docs/DECISIONS.md`). La sesión del editor
+la sincroniza desde el catálogo autenticado, incluidos tokens antiguos. El cliente
+solo escucha su token y los comentarios de la versión seleccionada; cambiar de
+versión cancela los listeners anteriores y cambia el hash a su token independiente.
+No se necesita consultar `projects`, ni guardar el índice en localStorage.

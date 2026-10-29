@@ -73,3 +73,25 @@
 - [ ] Comentarios en path token-scoped.
 - [ ] Tokens ≥ 96 bits y revocables.
 - [ ] Sin secretos en el frontend (solo config web pública de Firebase).
+
+## Navegación pública de versiones (2026-10-29)
+
+Un enlace activo permite conocer y abrir las demás versiones **compartidas del mismo
+proyecto** mediante `tokens/{token}/versions`; no da acceso al catálogo privado.
+Crear un borrador no lo comparte. Los tokens revocados no contienen un índice y
+las reglas deniegan sus lecturas/escrituras anónimas. La revocación impide usar ese
+enlace; no invalida otros enlaces activos que el cliente ya haya recibido.
+
+Activación en una instalación existente:
+
+1. Validar y desplegar `database.rules.json` con una cuenta de despliegue autorizada
+   (`firebase deploy --only database --project cybr-view`). Publicar Pages no despliega reglas.
+2. Abrir el dashboard con la sesión habitual del editor en la web actualizada. Al
+   recibir el catálogo se sincronizan los metadatos de todos los enlaces existentes.
+   No se modifican comentarios ni aprobaciones para esta migración.
+3. Comprobar con enlaces de prueba aislados. No crear ni alterar datos de clientes
+   como fixtures. Las pruebas de `tests/` usan datos controlados o un emulador local.
+
+Sin la primera sincronización, un enlace antiguo sigue abriendo su propia versión,
+pero todavía no puede descubrir las versiones hermanas. Las garantías de permisos
+nuevas requieren desplegar las reglas; un commit o el deploy de Pages no las activa.

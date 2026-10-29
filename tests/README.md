@@ -22,3 +22,22 @@ La prueba táctil utiliza eventos de toque del navegador (CDP) para arrastrar ha
 Estas pruebas usan Chromium y no sustituyen la comprobación manual en Safari de iPhone, incluido el fullscreen nativo, el teclado y las limitaciones del control de volumen.
 
 La prueba de producción usa el SDK Firebase simulado (sin datos ni credenciales reales), abre el enlace sin flags de DEV y comprueba escrituras correctas, errores de red sin falsos éxitos y lectura de la aprobación al recargar.
+
+Navegación pública de versiones, sincronización de enlaces antiguos, creación y
+publicación, aislamiento de datos y recarga en otro navegador (Firebase simulado):
+
+```sh
+python3 tests/version-navigation-smoke.py
+```
+
+Para validar los permisos reales con el emulador RTDB (sin credenciales ni datos de
+producción), instalar Firebase CLI fuera del checkout e iniciar el emulador con
+proyecto `demo-cybr-view`, reglas `database.rules.json` y puerto 9000. Después:
+
+```sh
+FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000 node tests/firebase-rules-smoke.mjs
+```
+
+Esta comprobación es independiente de las pruebas con SDK simulado. Necesita
+Java y el artefacto oficial del emulador de `storage.googleapis.com`. El script
+rechaza destinos que no sean `127.0.0.1` y solo usa el namespace `demo-cybr-view`.

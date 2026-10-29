@@ -9,11 +9,14 @@ import {
   configured,
   listenComments, createComment, updateComment, deleteComment,
   onConnection, setReviewToken, getReviewToken, getReviewApproval, setReviewApproval,
+  updateReviewTokens, listenReviewToken,
   createProject as fbCreateProject, createVersion as fbCreateVersion,
   updateVersion as fbUpdateVersion, updateProject as fbUpdateProject, deleteProject as fbDeleteProject,
   listenProjects, seedIfEmpty, cleanupBrokenVersions,
-} from './firebase.js?v=20261027-release1';
+} from './firebase.js?v=20261029-versions1';
 import { canTransition } from './status.js?v=20261027-release1';
+
+import { isShared, reviewTokenUpdates, sharedVersions } from './review-catalog.js?v=20261029-versions1';
 
 const toComments = (val) => (val ? Object.keys(val).map((k) => ({ ...val[k], id: k })) : []);
 
@@ -64,6 +67,18 @@ export function createSession() {
   let remoteProject = null;
   let remoteVersion = null;
   let seeded = false;
+  let reviewGeneration = 0;
+  let attachGeneration = 0;
+  let unsubToken = null;
+  let reviewVersions = [];
+  const reviewSubs = new Set();
+  const tokenSyncSubs = new Set();
+  const notifyTokenSync = (state) => tokenSyncSubs.forEach((fn) => fn(state));
+  const notifyReview = (state) => reviewSubs.forEach((fn) => fn(state));
+  let editorActive = false;
+  let catalogGeneration = 0;
+  let syncQueue = Promise.resolve();
+  let lastSynced = '';
 
   const currentProject = () => remoteProject || tree.find((p) => p.id === projectId) || null;
   const currentVersion = () => {
@@ -83,13 +98,16 @@ export function createSession() {
   }
 
   async function attach() {
+    const generation = ++attachGeneration;
+    applyMirror([]);
     if (unsub) { unsub(); unsub = null; }
     const v = currentVersion();
     if (!v) { applyMirror([]); return; }
     if (useRemote) {
       if (!v.accessToken) { applyMirror([]); return; }
       try {
-        unsub = await listenComments(v.accessToken, (val) => {
+        const stop = await listenComments(v.accessToken, (val) => {
+          if (generation !== attachGeneration) return;
           const list = toComments(val);
           applyMirror(list);
           const tp = tree.find((x) => x.id === (v.id && (remoteProject ? remoteProject.id : projectId)));
@@ -97,7 +115,8 @@ export function createSession() {
           if (tv) { tv.comments = list; }
           notifySelect();
         });
-      } catch { applyMirror(localComments()); }
+        if (generation === attachGeneration) unsub = stop; else stop();
+      } catch { if (generation === attachGeneration) applyMirror([]); }
     } else {
       applyMirror(localComments());
     }
@@ -132,8 +151,8 @@ export function createSession() {
         versionId = tree[0]?.versions[0]?.id || null;
       }
       notifyProjects();
-      notifySelect();
-      attach();
+      if (editorActive) syncAllTokens().catch((err) => console.error('[CYBR] Publicación de versiones pendiente', err));
+      if (!remoteVersion) { notifySelect(); attach(); }
     });
   }
 
@@ -171,36 +190,44 @@ export function createSession() {
 
   function tok() { return currentVersion()?.accessToken; }
 
-  function tokenMeta(p, v) {
-    return {
-      projectId: p.id,
-      versionId: v.id,
-      status: v.accessStatus,
-      projectName: p.name,
-      versionName: v.name,
-      videoUrl: v.videoUrl,
-      fps: v.fps,
-      reviewStatus: v.status,
-    };
+  function syncAllTokens() {
+    if (!useRemote || !editorActive) return Promise.resolve();
+    const generation = catalogGeneration;
+    const updates = reviewTokenUpdates(tree);
+    const signature = JSON.stringify(updates);
+    syncQueue = syncQueue.catch(() => {}).then(async () => {
+      if (signature === lastSynced || !editorActive || generation !== catalogGeneration) return;
+      notifyTokenSync('pending');
+      try {
+        if (Object.keys(updates).length) await updateReviewTokens(updates);
+        lastSynced = signature;
+        notifyTokenSync('ready');
+      } catch (err) { notifyTokenSync('error'); throw err; }
+    });
+    return syncQueue;
   }
 
-  function syncAllTokens() {
-    if (!useRemote) return;
-    tree.forEach((p) => {
-      (p.versions || []).forEach((v) => {
-        setReviewToken(v.accessToken, tokenMeta(p, v)).catch(() => {});
-      });
-    });
+  function setEditorActive(active) {
+    if (editorActive !== !!active) ++catalogGeneration;
+    editorActive = !!active;
+    if (editorActive) startProjectListener();
+    else {
+      if (unsubProjects) unsubProjects();
+      unsubProjects = null;
+      if (useRemote) tree = [];
+      lastSynced = '';
+    }
   }
 
   function resolveToken(token) { return findByToken(tree, token); }
 
-  function setAccessStatus(token, status) {
+  async function setAccessStatus(token, status) {
     const found = findByToken(tree, token);
     if (!found) return false;
     if (useRemote) {
-      fbUpdateVersion(found.project.id, found.version.id, { accessStatus: status, updatedAt: Date.now() }).catch(() => {});
-      setReviewToken(token, { ...tokenMeta(found.project, found.version), status }).catch(() => {});
+      await fbUpdateVersion(found.project.id, found.version.id, { accessStatus: status, updatedAt: Date.now() });
+      found.version.accessStatus = status;
+      await syncAllTokens();
     } else {
       found.version.accessStatus = status;
       found.version.updatedAt = Date.now();
@@ -248,8 +275,8 @@ export function createSession() {
       const projName = (tree.find((p) => p.id === projectIdRef) || {}).name || '';
       try {
         await setReviewToken(token, {
-          projectId: projectIdRef, versionId: id, status: 'active',
-          projectName: projName, versionName: name, videoUrl: vidUrl, fps: fps || 25, reviewStatus: 'DRAFT',
+          projectId: projectIdRef, versionId: id, status: 'revoked',
+          projectName: projName, versionName: name, videoUrl: '', fps: fps || 25, reviewStatus: 'DRAFT',
         });
       } catch (err) {
         console.error('[CYBR] setReviewToken FAILED', err);
@@ -330,12 +357,17 @@ export function createSession() {
     if (version.activity.length > 100) version.activity = version.activity.slice(-100);
   }
 
-  function setReviewStatus(versionIdArg, to, author) {
+  async function setReviewStatus(versionIdArg, to, author) {
     for (const p of tree) {
       const v = (p.versions || []).find((x) => x.id === versionIdArg);
       if (!v) continue;
       if (!canTransition(v.status, to)) return { ok: false, reason: 'TRANSITION_NOT_ALLOWED' };
       const prev = v.status;
+      const sharedAt = v.sharedAt || (['SENT_FOR_REVIEW', 'CHANGES_REQUESTED', 'APPROVED'].includes(v.status) || to === 'SENT_FOR_REVIEW' ? Date.now() : null);
+      const patch = { status: to, updatedAt: Date.now(), sharedAt };
+      if (to === 'APPROVED') Object.assign(patch, { approvedAt: Date.now(), approvedBy: author, reviewId: v.accessToken });
+      if (useRemote) await fbUpdateVersion(p.id, v.id, patch);
+      v.sharedAt = sharedAt;
       v.status = to;
       v.updatedAt = Date.now();
       if (to === 'APPROVED') {
@@ -350,9 +382,7 @@ export function createSession() {
         ARCHIVED: 'review_archived',
       }[to] || `review_${to.toLowerCase()}`;
       logActivity(v, type, { by: author });
-      if (useRemote) {
-        fbUpdateVersion(p.id, v.id, { status: v.status, updatedAt: v.updatedAt, approvedAt: v.approvedAt, approvedBy: v.approvedBy, reviewId: v.reviewId }).catch(() => {});
-      }
+      if (useRemote) await syncAllTokens();
       persistLocal();
       notifySelect();
       return { ok: true, version: v };
@@ -362,8 +392,10 @@ export function createSession() {
 
   async function approveActive(author) {
     if (useRemote && remoteVersion) {
+      const selected = remoteVersion;
       const now = Date.now();
-      await setReviewApproval(remoteVersion.accessToken, { approvedAt: now, approvedBy: author, reviewId: remoteVersion.accessToken });
+      await setReviewApproval(selected.accessToken, { approvedAt: now, approvedBy: author, reviewId: selected.accessToken });
+      if (selected !== remoteVersion) return { ok: true, version: selected };
       remoteVersion.status = 'APPROVED';
       remoteVersion.approvedAt = now;
       remoteVersion.approvedBy = author;
@@ -375,12 +407,28 @@ export function createSession() {
     return setReviewStatus(v?.id, 'APPROVED', author);
   }
 
-  async function openReview(token) {
+  function closeReview() {
+    ++reviewGeneration;
+    ++attachGeneration;
+    if (unsubToken) unsubToken();
+    if (unsub) unsub();
+    unsubToken = unsub = null;
+    remoteProject = remoteVersion = null;
+    reviewVersions = [];
+    applyMirror([]);
+  }
+
+  async function openReview(token, expectedProjectId = null) {
+    closeReview();
+    const generation = reviewGeneration;
     if (useRemote) {
       const node = await getReviewToken(token).catch(() => null);
+      if (generation !== reviewGeneration) return { ok: false, reason: 'superseded' };
       if (!node) return { ok: false, reason: 'invalid' };
-      if (node.status !== 'active') return { ok: false, reason: 'revoked' };
+      if (node.status !== 'active' || node.reviewStatus === 'DRAFT') return { ok: false, reason: 'revoked' };
+      if (expectedProjectId && node.projectId !== expectedProjectId) return { ok: false, reason: 'invalid' };
       const approval = await getReviewApproval(token).catch(() => null);
+      if (generation !== reviewGeneration) return { ok: false, reason: 'superseded' };
       remoteProject = { id: node.projectId, name: node.projectName };
       remoteVersion = {
         id: node.versionId, name: node.versionName, videoUrl: node.videoUrl,
@@ -389,14 +437,31 @@ export function createSession() {
       };
       projectId = node.projectId;
       versionId = node.versionId;
+      reviewVersions = sharedVersions(node, token);
       notifySelect();
       await attach();
+      const update = (value) => {
+        if (generation !== reviewGeneration) return;
+        if (!value || value.status !== 'active' || value.reviewStatus === 'DRAFT' || value.projectId !== projectId) {
+          closeReview(); notifySelect(); notifyReview({ denied: true }); return;
+        }
+        reviewVersions = sharedVersions(value, token);
+        notifyReview({ versions: reviewVersions });
+      };
+      const stop = await listenReviewToken(token, update, () => update(null));
+      if (generation !== reviewGeneration) { stop(); return { ok: false, reason: 'superseded' }; }
+      unsubToken = stop;
       return { ok: true, project: remoteProject, version: remoteVersion };
     }
     const found = findByToken(tree, token);
     if (!found) return { ok: false, reason: 'invalid' };
+    if (!isShared(found.version)) return { ok: false, reason: 'revoked' };
+    if (expectedProjectId && found.project.id !== expectedProjectId) return { ok: false, reason: 'invalid' };
     projectId = found.project.id;
     versionId = found.version.id;
+    reviewVersions = found.project.versions.filter(isShared).map((v) => ({
+      accessToken: v.accessToken, versionId: v.id, name: v.name, createdAt: v.createdAt,
+    }));
     notifySelect();
     await attach();
     return { ok: true, project: found.project, version: found.version };
@@ -430,9 +495,6 @@ export function createSession() {
 
   /* ---------- boot ---------- */
 
-  if (useRemote) {
-    startProjectListener();
-  }
   attach();
 
   return {
@@ -447,12 +509,17 @@ export function createSession() {
     onProjects: (fn) => { projectSubs.add(fn); fn(tree); return () => projectSubs.delete(fn); },
     resolveToken,
     openReview,
+    closeReview,
+    setEditorActive,
+    getReviewVersions: () => reviewVersions,
+    onReviewVersions: (fn) => { reviewSubs.add(fn); return () => reviewSubs.delete(fn); },
     findImportedReview,
     importReview,
     setAccessStatus,
     setReviewStatus,
     approveActive,
     syncAllTokens,
+    onTokenSync: (fn) => { tokenSyncSubs.add(fn); return () => tokenSyncSubs.delete(fn); },
     onConnection,
     ensureSeed,
     addProject,
@@ -473,7 +540,9 @@ export function createSession() {
 
     async add(data) {
       if (useRemote) {
+        const generation = reviewGeneration;
         await createComment(tok(), data);
+        if (generation !== reviewGeneration) return;
         optimisticAdd(data);
       } else {
         localMutate((v) => { v.comments = [data, ...v.comments]; });
@@ -485,7 +554,9 @@ export function createSession() {
     async setStatus(id, status) {
       const patch = { status, updatedAt: Date.now() };
       if (useRemote) {
+        const generation = reviewGeneration;
         await updateComment(tok(), id, patch);
+        if (generation !== reviewGeneration) return;
         optimisticPatch(id, patch);
       } else {
         localMutate((v) => { v.comments = v.comments.map((c) => (c.id === id ? { ...c, ...patch } : c)); });
@@ -499,7 +570,9 @@ export function createSession() {
       if (!text || !mirror.some((c) => c.id === id)) throw new Error('COMMENT_NOT_FOUND_OR_EMPTY');
       const patch = { body: text, updatedAt: Date.now() };
       if (useRemote) {
+        const generation = reviewGeneration;
         await updateComment(tok(), id, patch);
+        if (generation !== reviewGeneration) return;
         optimisticPatch(id, patch);
       } else {
         localMutate((v) => { v.comments = v.comments.map((c) => c.id === id ? { ...c, ...patch } : c); });
@@ -510,7 +583,9 @@ export function createSession() {
     },
     async remove(id) {
       if (useRemote) {
+        const generation = reviewGeneration;
         await deleteComment(tok(), id);
+        if (generation !== reviewGeneration) return;
         optimisticRemove(id);
       } else {
         localMutate((v) => { v.comments = v.comments.filter((c) => c.id !== id); });

@@ -5,11 +5,11 @@
  */
 import { initMobileProposal } from './mobile-proposal.js?v=20261027-release1';
 import { createPlayer } from './player.js?v=20261027-release1';
-import { createSession } from './session.js?v=20261027-release1';
-import { createReviewComments } from './review-comments.js?v=20261027-release1';
+import { createSession } from './session.js?v=20261029-versions1';
+import { createReviewComments } from './review-comments.js?v=20261029-versions1';
 import { CONFIG } from './config.js?v=20261027-release1';
-import { configured } from './firebase.js?v=20261027-release1';
-import { signIn, signOut, onAuth } from './auth.js?v=20261027-release1';
+import { configured } from './firebase.js?v=20261029-versions1';
+import { signIn, signOut, onAuth } from './auth.js?v=20261029-versions1';
 import { canTransition } from './status.js?v=20261027-release1';
 import { normalizeVideoUrl, VIDEO_PROXY_BASE } from './data.js?v=20261027-release1';
 
@@ -24,7 +24,8 @@ let player = null;
 let session = null;
 let comments = null;
 let authState = null;
-let tokensSynced = false;
+let reviewRequest = 0;
+let pendingReviewProject = null;
 let currentReviewProjectId = null;
 
 function isTyping(e) {
@@ -126,7 +127,8 @@ function reviewUrl(token) {
 
 function showDenied(reason) {
   document.body.dataset.view = 'denied';
-  player.pause();
+  session.closeReview();
+  player.setSource('');
   $('review-denied').querySelector('.denied-code').textContent = 'REVIEW ACCESS DENIED';
   $('review-denied').hidden = false;
   $('denied-text').textContent = reason === 'revoked'
@@ -146,8 +148,13 @@ async function openClientReview(token) {
   denied.hidden = true;
   $('selector-stack').hidden = true;
 
+  const request = ++reviewRequest;
   if (!token) return showDenied('invalid');
-  const res = await session.openReview(token);
+  const expectedProject = pendingReviewProject;
+  pendingReviewProject = null;
+  player.setSource('');
+  const res = await session.openReview(token, expectedProject);
+  if (request !== reviewRequest || res.reason === 'superseded') return;
   if (!res.ok) return showDenied(res.reason);
 
   if (!configured && res.project.previewSource) {
@@ -158,6 +165,28 @@ async function openClientReview(token) {
   const ra = $('review-actions');
   if (ra) ra.hidden = !authState;
   applyMeta(res.project, res.version);
+  renderReviewVersions();
+}
+
+function renderReviewVersions() {
+  if (document.body.dataset.view !== 'review') return;
+  const chips = $('version-chips');
+  chips.replaceChildren();
+  const current = session.getVersion()?.accessToken;
+  for (const version of session.getReviewVersions()) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'version-chip';
+    button.textContent = version.name || 'Versión';
+    button.setAttribute('aria-pressed', String(version.accessToken === current));
+    button.classList.toggle('is-active', version.accessToken === current);
+    button.addEventListener('click', () => {
+      if (version.accessToken === current) return;
+      pendingReviewProject = session.getProject()?.id;
+      location.hash = `#/review/${version.accessToken}`;
+    });
+    chips.append(button);
+  }
+  $('selector-stack').hidden = false;
 }
 
 /* ---------- eliminar proyecto desde la vista de review (editor) ---------- */
@@ -264,7 +293,7 @@ function renderDashboard() {
         `<span class="dash-last">LAST // ${lastActivity(v)}</span>`,
         transitionActions(v).map((t) => `<button class="btn btn-ghost" data-trans="${t.to}" data-version="${v.id}" type="button">${t.label}</button>`).join(''),
         `<button class="btn btn-ghost" data-open="${v.accessToken}" type="button">OPEN</button>`,
-        `<button class="btn btn-ghost" data-copy="${v.accessToken}" type="button">COPY LINK</button>`,
+        `<button class="btn btn-ghost" data-copy="${v.accessToken}" type="button" ${v.status === 'DRAFT' ? 'disabled' : ''}>COPY LINK</button>`,
       ].join('');
       list.appendChild(row);
     });
@@ -289,9 +318,10 @@ function renderDashboard() {
   });
 
   list.querySelectorAll('[data-trans]').forEach((b) => {
-    b.addEventListener('click', () => {
-      session.setReviewStatus(b.dataset.version, b.dataset.trans, 'Editor');
-      renderDashboard();
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await session.setReviewStatus(b.dataset.version, b.dataset.trans, 'Editor'); renderDashboard(); }
+      catch (err) { alert('// No se pudo publicar el cambio. Reintenta.'); console.error(err); b.disabled = false; }
     });
   });
   list.querySelectorAll('[data-open]').forEach((b) => {
@@ -347,11 +377,7 @@ function renderDashboard() {
       const fps = parseInt(form.querySelector('.ver-fps')?.value, 10) || 25;
       try {
         const result = await session.addVersion(projectId, name, url, fps);
-        if (result?.token) {
-          const link = reviewUrl(result.token);
-          if (navigator.clipboard) { navigator.clipboard.writeText(link).catch(() => {}); }
-          alert(`Review link created and copied:\n${link}`);
-        }
+        if (result?.token) alert('Borrador creado. Usa PUBLISH para compartir esta versión con el cliente.');
         form.hidden = true;
       } catch (e) {
         console.error('addVersion failed', e);
@@ -372,11 +398,13 @@ function wireApprove() {
     btn.disabled = true;
     try {
       const res = await session.approveActive('Client');
+      if (session.getVersion()?.accessToken !== version?.accessToken) return;
       if (!res?.ok) throw new Error('APPROVAL_FAILED');
       applyMeta(session.getProject(), session.getVersion());
       feedback.textContent = 'Versión aprobada. Gracias por tu revisión.';
       feedback.dataset.error = 'false';
     } catch {
+      if (session.getVersion()?.accessToken !== version?.accessToken) return;
       feedback.textContent = 'No pudimos guardar la aprobación. Comprueba tu conexión y reintenta.';
       feedback.dataset.error = 'true';
     } finally { btn.disabled = false; }
@@ -449,11 +477,11 @@ async function openPreviewImport(token) {
 function route() {
   const { seg, param } = parseHash();
 
+  if (seg !== 'review' && seg !== 'import') { ++reviewRequest; session.closeReview(); player.pause(); }
   if (seg === 'import') { openPreviewImport(param); return; }
   if (seg === 'login') { showView('login'); return; }
   if (seg === 'dashboard') {
     if (!authState) { location.hash = '#/login'; return; }
-    if (!tokensSynced) { tokensSynced = true; session.syncAllTokens(); }
     try { renderDashboard(); } catch (e) { console.error('renderDashboard', e); }
     showView('dashboard');
     return;
@@ -475,6 +503,23 @@ comments = createReviewComments({ store: session, player });
 
 initMobileProposal({ player, comments, session });
 
+session.onReviewVersions((state) => {
+  if (state.denied) { player.setSource(''); showDenied('revoked'); }
+  else renderReviewVersions();
+});
+
+const syncStatus = document.createElement('p');
+syncStatus.setAttribute('role', 'status');
+const syncLabel = document.createElement('span');
+const syncRetry = document.createElement('button');
+syncRetry.type = 'button'; syncRetry.className = 'btn btn-ghost'; syncRetry.textContent = 'Reintentar'; syncRetry.hidden = true;
+syncRetry.addEventListener('click', () => session.syncAllTokens().catch(console.error));
+syncStatus.append(syncLabel, syncRetry); $('dashboard-list').before(syncStatus);
+session.onTokenSync((state) => {
+  syncLabel.textContent = { pending: 'Actualizando enlaces de versiones… ', ready: 'Enlaces de versiones actualizados.', error: 'No pudimos actualizar los enlaces de versiones. ' }[state];
+  syncRetry.hidden = state !== 'error';
+});
+
 wireBackend(session);
 wireKeys(comments);
 wireLogin();
@@ -495,6 +540,7 @@ if (session.onProjects) {
 
 onAuth((user) => {
   authState = user;
+  session.setEditorActive(!!user);
   paintAuth(user);
   if (user && session.ensureSeed) session.ensureSeed();
   route();

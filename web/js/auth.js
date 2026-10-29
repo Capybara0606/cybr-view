@@ -3,7 +3,7 @@
  * Usa Firebase Authentication (email/password). En modo local/DEV (sin config de
  * Firebase) simula una sesión de editor local para poder probar el dashboard.
  */
-import { configured, signInWithEmail, signOutUser, onAuthState } from './firebase.js?v=20261027-release1';
+import { configured, signInWithEmail, signOutUser, onAuthState } from './firebase.js?v=20261029-versions1';
 
 const KEY = 'cybrview:editor:authed';
 const listeners = new Set();

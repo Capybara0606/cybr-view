@@ -1480,3 +1480,9 @@ button {
   letter-spacing: 0.1em;
   margin-bottom: 6px;
 }
+
+/* Navegación pública limitada a las versiones compartidas del proyecto. */
+#selector-stack .selector-row { flex-wrap: wrap; }
+#selector-stack .version-chips { min-width: 0; max-width: 100%; }
+#selector-stack .version-chip { min-height: 44px; overflow-wrap: anywhere; max-width: 100%; cursor: pointer; }
+#selector-stack .version-chip:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }

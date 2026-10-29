@@ -53,14 +53,19 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "${PAGE_URL}?release=20261027-release1" -o /tmp/published-index.html
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "${PAGE_URL}?release=20261029-versions1" -o /tmp/published-index.html
           python3 - <<'PYCODE'
           from pathlib import Path
-          assert '20261027-release1' in Path('/tmp/published-index.html').read_text(), 'Published HTML does not match this release'
+          assert '20261029-versions1' in Path('/tmp/published-index.html').read_text(), 'Published HTML does not match this release'
           PYCODE
-          curl --fail --silent --show-error --retry 3 --retry-delay 5 "${PAGE_URL}js/app.js?v=20261027-release1" -o /tmp/published-app.js
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 "${PAGE_URL}js/app.js?v=20261029-versions1" -o /tmp/published-app.js
           python3 - <<'PYCODE'
           from pathlib import Path
           assert 'const enhancedReview = true;' in Path('/tmp/published-app.js').read_text(), 'New default review UI is missing'
+          PYCODE
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 "${PAGE_URL}js/review-catalog.js?v=20261029-versions1" -o /tmp/published-catalog.js
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          assert 'export function reviewTokenUpdates' in Path('/tmp/published-catalog.js').read_text(), 'Version navigation catalog is missing'
           PYCODE
           echo "Frontend verified at ${PAGE_URL}" >> "$GITHUB_STEP_SUMMARY"

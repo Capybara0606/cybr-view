@@ -4,21 +4,20 @@
       "v1": {
         "tokens": {
           "$token": {
-            ".read": true,
+            ".read": "auth != null || (data.child('status').val() === 'active' && data.child('reviewStatus').val() !== 'DRAFT')",
             ".write": "auth != null"
           }
         },
         "reviews": {
           "$token": {
-            ".read": true,
-            ".write": "root.child('cybrview/v1/tokens').child($token).exists()",
+            ".read": "auth != null || (root.child('cybrview/v1/tokens').child($token).child('status').val() === 'active' && root.child('cybrview/v1/tokens').child($token).child('reviewStatus').val() !== 'DRAFT')",
+            ".write": "auth != null",
             "approval": {
-              ".write": "root.child('cybrview/v1/tokens').child($token).exists()"
+              ".write": "auth != null || (root.child('cybrview/v1/tokens').child($token).child('status').val() === 'active' && root.child('cybrview/v1/tokens').child($token).child('reviewStatus').val() !== 'DRAFT')"
             },
             "comments": {
               "$commentId": {
-                ".read": true,
-                ".write": "root.child('cybrview/v1/tokens').child($token).exists()"
+                ".write": "auth != null || (root.child('cybrview/v1/tokens').child($token).child('status').val() === 'active' && root.child('cybrview/v1/tokens').child($token).child('reviewStatus').val() !== 'DRAFT')"
               }
             }
           }

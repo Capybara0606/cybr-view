@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-10-29 — Navegación pública entre versiones
+
+- Selector de versiones compartidas del mismo proyecto desde enlaces de invitado,
+  con selección actual y URL independiente por versión.
+- Índices públicos mínimos sincronizados por el editor para enlaces antiguos y
+  nuevas publicaciones; se excluyen borradores sin compartir y accesos revocados.
+- Cancelación de listeners y protección frente a respuestas tardías al navegar;
+  comentarios, marcadores y aprobación permanecen separados por token.
+- Reglas de Firebase que comprueban acceso activo para lecturas y escrituras;
+  requieren despliegue independiente de Pages. Migración documentada en SECURITY.md.
+- Pruebas de navegador para navegación entre versiones y pruebas de catálogo;
+  se conservan los controles y la interfaz móvil aprobados. Worker sin cambios.
+
+
 > Bitácora de versiones de CYBR VIEW.
 > Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/) y
 > [Semantic Versioning](https://semver.org/lang/es/).

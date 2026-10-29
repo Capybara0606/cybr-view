@@ -87,6 +87,19 @@ export async function getReviewToken(token) {
   return snap.val();
 }
 
+export async function updateReviewTokens(updates) {
+  const d = await db();
+  await d.ref().update(updates);
+}
+
+export async function listenReviewToken(token, callback, onError) {
+  const d = await db();
+  const ref = d.ref(tokenPath(token));
+  const cb = (snap) => callback(snap.val());
+  ref.on('value', cb, onError);
+  return () => ref.off('value', cb);
+}
+
 export async function getReviewApproval(token) {
   const d = await db();
   const snap = await d.ref(`cybrview/v1/reviews/${token}/approval`).once('value');
@@ -147,13 +160,15 @@ export async function deleteProject(projectId) {
 export function listenProjects(callback) {
   if (!configured) { callback(null); return () => {}; }
   let unsub = null;
+  let cancelled = false;
   db().then((d) => {
+    if (cancelled) return;
     const ref = d.ref(PROJECTS_BASE);
     const cb = (snap) => callback(snap.val());
     ref.on('value', cb);
     unsub = () => ref.off('value', cb);
   }).catch(() => callback(null));
-  return () => { if (unsub) unsub(); };
+  return () => { cancelled = true; if (unsub) unsub(); };
 }
 
 /* ---------- VERSIONS CRUD ---------- */

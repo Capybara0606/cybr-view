@@ -144,3 +144,26 @@
   comentarios; las reglas son de desarrollo hasta conectar Authentication.> ADR mantenidos. Antes de agregar uno nuevo, leer `ARCHITECTURE.md` para mantener coherencia.
 > Para **añadir** un ADR: copiar plantilla, asignar ID, actualizar el índice del `ARCHITECTURE.md`
 > y reflejar en `CHANGELOG.md`.
+
+## ADR — Navegación pública entre versiones del mismo proyecto (2026-10-29)
+
+El cliente invitado no consulta `projects`. Cada token activo contiene `versions`,
+un índice mínimo de las versiones compartidas del mismo proyecto: token, versionId,
+nombre y fecha de creación. No contiene comentarios, datos del cliente ni videos de
+otras versiones. Al seleccionar, se valida de nuevo el token de destino y su proyecto;
+la URL pasa a `#/review/TOKEN_DESTINO`. Cada versión conserva sus comentarios y
+aprobación en `reviews/TOKEN_DESTINO`.
+
+El editor sincroniza todos los tokens del catálogo mediante una actualización
+multipath al recibir el snapshot autenticado de proyectos, también al publicar,
+revocar o editar. Esto actualiza los enlaces antiguos sin regenerarlos. Un token
+antiguo sin índice abre su versión; la navegación completa necesita una primera
+sincronización del editor. El cliente escucha su token para recibir nuevas versiones
+y revocaciones mientras revisa. Nunca escribe metadatos de navegación.
+
+Un borrador no se comparte al crearlo: requiere PUBLISH. Los estados enviados,
+con cambios y aprobados son compartibles si su acceso está activo. Se registra
+`sharedAt` al publicar; una versión archivada solo se incluye si consta que fue
+compartido. Las versiones históricas archivadas sin esa evidencia se excluyen por
+precaución. Las reglas restringen tanto lecturas como escrituras a tokens activos
+que no sean borradores; el invitado solo escribe comentarios y aprobación.

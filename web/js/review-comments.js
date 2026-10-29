@@ -22,6 +22,7 @@ export function createReviewComments({ store, player }) {
   filters.className = 'comment-filters'; filters.setAttribute('role', 'group');
   filters.setAttribute('aria-label', 'Filtrar comentarios');
   document.querySelector('.comments-nav').after(filters);
+  let selectionEpoch = 0;
   let filter = 'all', activeId = null, editingId = null, draft = null, capturedTime = null, pending = false;
   const all = button('Todos', () => { filter = 'all'; render(); });
   const open = button('Pendientes', () => { filter = 'open'; render(); });
@@ -56,15 +57,17 @@ export function createReviewComments({ store, player }) {
   }
   async function remove(c) {
     if (pending || !window.confirm('¿Eliminar este comentario? Esta acción no se puede deshacer.')) return;
+    const epoch = selectionEpoch;
     pending = true;
     try {
       await store.remove(c.id);
+      if (epoch !== selectionEpoch) return;
       pending = false;
       if (editingId === c.id) finishEdit();
       if (activeId === c.id) activeId = null;
       feedback.textContent = store.isRemote ? 'Comentario eliminado.' : 'Comentario eliminado de esta copia de prueba.'; render();
-    } catch { feedback.textContent = 'No pudimos eliminar el comentario. Reintenta.'; }
-    finally { pending = false; }
+    } catch { if (epoch === selectionEpoch) feedback.textContent = 'No pudimos eliminar el comentario. Reintenta.'; }
+    finally { if (epoch === selectionEpoch) pending = false; }
   }
   async function submit() {
     const body = composer.value.trim(); if (!body || pending) return;
@@ -72,18 +75,20 @@ export function createReviewComments({ store, player }) {
     const edited = editingId;
     const id = edited || `c_${Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')}`;
     const now = Date.now();
+    const epoch = selectionEpoch;
     pending = true; send.disabled = true; cancel.disabled = true; feedback.textContent = 'Guardando comentario…';
     try {
       if (edited) await store.edit(id, body);
       else await store.add({ id, authorName: 'INVITADO', authorRole: 'guest', body, time,
         timeCode: formatCode(time), status: 'open', createdAt: now, updatedAt: now });
+      if (epoch !== selectionEpoch) return;
       pending = false;
       if (edited) finishEdit();
       else { composer.value = ''; capturedTime = null; }
       filter = 'all'; select(id, false); updateCode();
       feedback.textContent = edited ? 'Comentario actualizado. Se conserva su tiempo original.' : (store.isRemote ? 'Comentario guardado.' : 'Comentario añadido a esta copia de prueba.');
-    } catch { feedback.textContent = 'No pudimos guardar el comentario. Tu texto sigue aquí para reintentar.'; }
-    finally { pending = false; send.disabled = false; cancel.disabled = false; }
+    } catch { if (epoch === selectionEpoch) feedback.textContent = 'No pudimos guardar el comentario. Tu texto sigue aquí para reintentar.'; }
+    finally { if (epoch === selectionEpoch) { pending = false; send.disabled = false; cancel.disabled = false; } }
   }
   function renderComment(c) {
     const item = document.createElement('article');
@@ -103,10 +108,11 @@ export function createReviewComments({ store, player }) {
     const actions = document.createElement('div'); actions.className = 'comment-actions';
     actions.append(button(c.status === 'resolved' ? 'Reabrir' : '✓ Resolver', async () => {
       if (pending) return;
+      const epoch = selectionEpoch;
       pending = true;
       try { await store.setStatus(c.id, c.status === 'resolved' ? 'open' : 'resolved'); }
-      catch { feedback.textContent = 'No pudimos guardar el estado del comentario. Reintenta.'; }
-      finally { pending = false; }
+      catch { if (epoch === selectionEpoch) feedback.textContent = 'No pudimos guardar el estado del comentario. Reintenta.'; }
+      finally { if (epoch === selectionEpoch) pending = false; }
     }), button('Editar', () => edit(c)), button('Eliminar', () => remove(c), 'btn btn-ghost btn-danger'));
     item.append(head, text, meta, actions); return item;
   }
@@ -146,6 +152,7 @@ export function createReviewComments({ store, player }) {
     let version = null;
     store.onSelect(({ version: v }) => {
       const next = v?.accessToken || v?.id; if (next === version) return;
+      ++selectionEpoch; pending = false; send.disabled = false; cancel.disabled = false; filter = 'all';
       version = next; editingId = null; draft = null; activeId = null; capturedTime = null;
       composer.value = ''; cancel.hidden = true; feedback.textContent = ''; send.textContent = 'Enviar comentario';
       composer.placeholder = '¿Qué cambiarías en este momento?'; updateCode();
