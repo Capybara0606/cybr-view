@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-29 — Abrir la versión más reciente
+
+- Al abrir un enlace activo, seleccionar la versión compartida más reciente del mismo proyecto y actualizar la URL. La selección manual de versiones anteriores se mantiene durante la visita; recargar vuelve a seleccionar la más reciente.
+
 ## 2026-10-29 — Navegación pública entre versiones
 
 - Selector de versiones compartidas del mismo proyecto desde enlaces de invitado,

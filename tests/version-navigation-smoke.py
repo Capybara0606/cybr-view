@@ -91,9 +91,17 @@ with sync_playwright() as p:
     fresh = context()
     fresh.add_init_script('window.__fixture.set("cybrview/v1/tokens", '+__import__('json').dumps(snapshot)+')')
     second = fresh.new_page()
-    second.goto(f'{BASE}/#/review/{B}')
+    second.goto(f'{BASE}/#/review/{A}')
+    second.wait_for_function('document.querySelector("#version-chips button[aria-pressed=true]")?.textContent === "V04"')
+    latest_url = second.url
+    assert not latest_url.endswith(f'#/review/{A}')
+    second.get_by_role('button', name='V02', exact=True).click()
     second.get_by_text('Comentario V02', exact=True).wait_for()
-    second.reload(); second.get_by_text('Comentario V02', exact=True).wait_for()
+    second.reload()
+    second.wait_for_function('document.querySelector("#version-chips button[aria-pressed=true]")?.textContent === "V04"')
+    assert second.url == latest_url
+    second.get_by_role('button', name='V02', exact=True).click()
+    second.get_by_text('Comentario V02', exact=True).wait_for()
     assert second.locator('#version-chips button').all_text_contents() == ['V01', 'V02', 'V03', 'V04']
     assert second.evaluate('window.__writes.length') == 0
     assert second.evaluate('window.__reads.every(p => !p.includes("/projects"))')

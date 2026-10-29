@@ -26,6 +26,7 @@ let comments = null;
 let authState = null;
 let reviewRequest = 0;
 let pendingReviewProject = null;
+let preferLatestReview = true;
 let currentReviewProjectId = null;
 
 function isTyping(e) {
@@ -153,9 +154,21 @@ async function openClientReview(token) {
   const expectedProject = pendingReviewProject;
   pendingReviewProject = null;
   player.setSource('');
-  const res = await session.openReview(token, expectedProject);
+  let res = await session.openReview(token, expectedProject);
   if (request !== reviewRequest || res.reason === 'superseded') return;
   if (!res.ok) return showDenied(res.reason);
+
+  if (preferLatestReview && !expectedProject) {
+    preferLatestReview = false;
+    const latest = session.getReviewVersions().at(-1);
+    if (latest && latest.accessToken !== token) {
+      res = await session.openReview(latest.accessToken, res.project.id);
+      if (request !== reviewRequest || res.reason === 'superseded') return;
+      if (!res.ok) return showDenied(res.reason);
+      token = latest.accessToken;
+      history.replaceState(null, '', reviewUrl(token));
+    }
+  }
 
   if (!configured && res.project.previewSource) {
     // Mantiene un enlace que otro navegador puede importar, aunque el almacenamiento local se pierda.
